@@ -103,7 +103,7 @@ const en: Dictionary = {
 		customPrefixPlaceholder: "Reuse an older prefix",
 		customPrefixHint:
 			"Use 3-32 lowercase letters, numbers, or single hyphens.",
-		customPrefixAction: "Use this prefix",
+		customPrefixAction: "Reuse address",
 		customPrefixError:
 			"Use 3-32 lowercase letters, numbers, or single hyphens.",
 		stats: {
@@ -181,7 +181,7 @@ const zh: Dictionary = {
 		customPrefixLabel: "自定义前缀",
 		customPrefixPlaceholder: "输入想复用的前缀",
 		customPrefixHint: "仅支持 3-32 位小写字母、数字或单个连字符。",
-		customPrefixAction: "使用此前缀",
+		customPrefixAction: "复用地址",
 		customPrefixError: "请输入 3-32 位小写字母、数字或单个连字符。",
 		stats: {
 			lifetimeValue: "24小时",
@@ -259,7 +259,7 @@ const es: Dictionary = {
 		customPrefixPlaceholder: "Reutiliza un prefijo anterior",
 		customPrefixHint:
 			"Usa 3-32 letras minúsculas, números o guiones simples.",
-		customPrefixAction: "Usar este prefijo",
+		customPrefixAction: "Reutilizar dirección",
 		customPrefixError:
 			"Usa 3-32 letras minúsculas, números o guiones simples.",
 		stats: {
@@ -334,7 +334,7 @@ const fr: Dictionary = {
 		customPrefixPlaceholder: "Réutiliser un ancien préfixe",
 		customPrefixHint:
 			"Utilisez 3-32 lettres minuscules, chiffres ou tirets simples.",
-		customPrefixAction: "Utiliser ce préfixe",
+		customPrefixAction: "Reutiliser l'adresse",
 		customPrefixError:
 			"Utilisez 3-32 lettres minuscules, chiffres ou tirets simples.",
 		stats: {
@@ -410,7 +410,7 @@ const de: Dictionary = {
 		customPrefixPlaceholder: "Ein früheres Präfix wiederverwenden",
 		customPrefixHint:
 			"Verwende 3-32 Kleinbuchstaben, Ziffern oder einzelne Bindestriche.",
-		customPrefixAction: "Dieses Präfix nutzen",
+		customPrefixAction: "Adresse wiederverwenden",
 		customPrefixError:
 			"Verwende 3-32 Kleinbuchstaben, Ziffern oder einzelne Bindestriche.",
 		stats: {
@@ -484,7 +484,7 @@ const ja: Dictionary = {
 		customPrefixPlaceholder: "再利用したい接頭辞を入力",
 		customPrefixHint:
 			"3〜32文字の小文字、数字、単一ハイフンのみ使えます。",
-		customPrefixAction: "この接頭辞を使う",
+		customPrefixAction: "アドレスを再利用",
 		customPrefixError:
 			"3〜32文字の小文字、数字、単一ハイフンを入力してください。",
 		stats: {
@@ -559,7 +559,7 @@ const ko: Dictionary = {
 		customPrefixPlaceholder: "다시 쓸 접두사를 입력하세요",
 		customPrefixHint:
 			"3-32자의 소문자, 숫자, 단일 하이픈만 사용할 수 있습니다.",
-		customPrefixAction: "이 접두사 사용",
+		customPrefixAction: "주소 재사용",
 		customPrefixError:
 			"3-32자의 소문자, 숫자, 단일 하이픈만 입력하세요.",
 		stats: {
@@ -633,7 +633,7 @@ const ru: Dictionary = {
 		customPrefixPlaceholder: "Повторно использовать старый префикс",
 		customPrefixHint:
 			"Используйте 3-32 строчные буквы, цифры или одиночные дефисы.",
-		customPrefixAction: "Использовать префикс",
+		customPrefixAction: "Переиспользовать адрес",
 		customPrefixError:
 			"Используйте 3-32 строчные буквы, цифры или одиночные дефисы.",
 		stats: {
@@ -709,7 +709,7 @@ const pt: Dictionary = {
 		customPrefixPlaceholder: "Reutilize um prefixo antigo",
 		customPrefixHint:
 			"Use 3-32 letras minúsculas, números ou hífens simples.",
-		customPrefixAction: "Usar este prefixo",
+		customPrefixAction: "Reutilizar endereço",
 		customPrefixError:
 			"Use 3-32 letras minúsculas, números ou hífens simples.",
 		stats: {
@@ -784,7 +784,7 @@ const ar: Dictionary = {
 		customPrefixPlaceholder: "أعد استخدام بادئة سابقة",
 		customPrefixHint:
 			"استخدم من 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطات مفردة.",
-		customPrefixAction: "استخدام هذه البادئة",
+		customPrefixAction: "إعادة استخدام العنوان",
 		customPrefixError:
 			"استخدم من 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطات مفردة.",
 		stats: {

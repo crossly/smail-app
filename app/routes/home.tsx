@@ -16,6 +16,7 @@ import {
 } from "~/i18n/config";
 import { getDictionary } from "~/i18n/messages";
 import type { Email, EmailDetail } from "~/types/email";
+import { getAddressActionLabelKey } from "~/utils/address-composer";
 import {
 	shouldLoadEmailPreview,
 	toggleExpandedEmailId,
@@ -421,10 +422,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
 	const columnSpanClass = {
-		3: "xl:col-span-3",
 		4: "xl:col-span-4",
 		6: "xl:col-span-6",
-	} satisfies Record<3 | 4 | 6, string>;
+	} satisfies Record<4 | 6, string>;
+	const addressColumnClass = columnSpanClass[toolSections.desktopColumns[0]];
+	const inboxColumnClass = columnSpanClass[toolSections.desktopColumns[1]];
+	const addressActionLabelKey = getAddressActionLabelKey({
+		activeAddress,
+		customPrefix,
+	});
 	const expandedEmailPreviewStatus = expandedEmailId
 		? emailPreviewStatusById[expandedEmailId]
 		: undefined;
@@ -571,18 +577,27 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		);
 	};
 
+	const submitAddressAction = () => {
+		if (activeAddress || !customPrefix.trim()) {
+			submitRandomAddress();
+			return;
+		}
+
+		submitCustomAddress();
+	};
+
 	return (
 		<div className="flex flex-1 py-3 sm:py-4">
 			<script
 				type="application/ld+json"
 				dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
 			/>
-			<div className="grid w-full gap-4 xl:grid-cols-12">
+			<div className="grid w-full gap-4 xl:grid-cols-10">
 				{toolSections.panelOrder.map((panel) =>
 					panel === "address" ? (
 						<section
 							key={panel}
-							className={`tool-surface ${columnSpanClass[toolSections.desktopColumns[panel]]} xl:self-start`}
+							className={`tool-surface ${addressColumnClass} xl:self-start`}
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
@@ -601,15 +616,45 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									data-empty={activeAddress ? "false" : "true"}
 								>
 									<div className="tool-address-meta">
-										<p className="tool-field-label">{siteConfig.mailDomain}</p>
 										{activeAddress ? (
-											<div className="tool-address">{activeAddress}</div>
+											<>
+												<p className="tool-field-label">{siteConfig.mailDomain}</p>
+												<div className="tool-address">{activeAddress}</div>
+											</>
 										) : (
 											<>
-												<p className="tool-empty-title">{copy.noAddressTitle}</p>
-												<p className="tool-empty-copy">
-													{copy.noAddressDescription}
-												</p>
+												<label className="sr-only" htmlFor="custom-prefix">
+													{copy.customPrefixLabel}
+												</label>
+												<div className="tool-prefix-composer !mt-0">
+													<input
+														id="custom-prefix"
+														name="customPrefix"
+														type="text"
+														inputMode="text"
+														autoCapitalize="off"
+														autoComplete="off"
+														autoCorrect="off"
+														spellCheck={false}
+														className="tool-prefix-input"
+														placeholder={copy.customPrefixPlaceholder}
+														value={customPrefix}
+														onChange={(event) => {
+															setCustomPrefix(event.currentTarget.value);
+														}}
+														onKeyDown={(event) => {
+															if (event.key !== "Enter" || isSubmitting) {
+																return;
+															}
+
+															event.preventDefault();
+															submitAddressAction();
+														}}
+													/>
+													<span className="tool-prefix-domain">
+														@{siteConfig.mailDomain}
+													</span>
+												</div>
 											</>
 										)}
 									</div>
@@ -656,97 +701,36 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									) : null}
 								</div>
 
+								{!activeAddress ? (
+									<p className="tool-field-hint !mt-0">{copy.customPrefixHint}</p>
+								) : null}
+
 								<button
 									type="button"
 									name="intent"
 									value="generate"
 									className="neo-button w-full justify-center"
-									onClick={submitRandomAddress}
+									onClick={submitAddressAction}
 									disabled={isSubmitting}
 								>
 									{submittingIntent === "generate" && isSubmitting
 										? copy.generating
-										: activeAddress
-											? copy.generateNew
-											: copy.generateAddress}
+										: copy[addressActionLabelKey]}
 								</button>
 
-								<p className="tool-note">{copy.safetyHint}</p>
-							</div>
-						</section>
-					) : panel === "prefix" ? (
-						<section
-							key={panel}
-							className={`tool-surface ${columnSpanClass[toolSections.desktopColumns[panel]]} xl:self-start`}
-						>
-							<header className="tool-toolbar">
-								<div className="space-y-1">
-									<p className="tool-kicker">{siteConfig.mailDomain}</p>
-									<p className="tool-title">{copy.customPrefixLabel}</p>
-									<p className="tool-caption">{copy.customPrefixHint}</p>
-								</div>
-								<div className="tool-address-status">
-									<span className="tool-chip">@{siteConfig.mailDomain}</span>
-								</div>
-							</header>
-
-							<div className="tool-body">
-								<label className="sr-only" htmlFor="custom-prefix">
-									{copy.customPrefixLabel}
-								</label>
-								<div className="tool-prefix-composer !mt-0">
-									<input
-										id="custom-prefix"
-										name="customPrefix"
-										type="text"
-										inputMode="text"
-										autoCapitalize="off"
-										autoComplete="off"
-										autoCorrect="off"
-										spellCheck={false}
-										className="tool-prefix-input"
-										placeholder={copy.customPrefixPlaceholder}
-										value={customPrefix}
-										onChange={(event) => {
-											setCustomPrefix(event.currentTarget.value);
-										}}
-										onKeyDown={(event) => {
-											if (event.key !== "Enter" || isSubmitting) {
-												return;
-											}
-
-											event.preventDefault();
-											submitCustomAddress();
-										}}
-									/>
-									<span className="tool-prefix-domain">
-										@{siteConfig.mailDomain}
-									</span>
-								</div>
-								<button
-									type="button"
-									className="neo-button-secondary w-full justify-center"
-									onClick={submitCustomAddress}
-									disabled={isSubmitting || !customPrefix.trim()}
-								>
-									{submittingIntent === "generate" &&
-									isSubmitting &&
-									typeof fetcher.formData?.get("customPrefix") === "string" &&
-									fetcher.formData?.get("customPrefix")?.toString().trim()
-										? copy.generating
-										: copy.customPrefixAction}
-								</button>
 								{shouldShowPrefixError ? (
 									<p className="tool-field-error" role="alert">
 										{fetcher.data?.error}
 									</p>
 								) : null}
+
+								<p className="tool-note">{copy.safetyHint}</p>
 							</div>
 						</section>
 					) : (
 						<section
 							key={panel}
-							className={`tool-surface min-w-0 ${columnSpanClass[toolSections.desktopColumns[panel]]}`}
+							className={`tool-surface min-w-0 ${inboxColumnClass}`}
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
