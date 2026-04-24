@@ -16,7 +16,10 @@ import {
 } from "~/i18n/config";
 import { getDictionary } from "~/i18n/messages";
 import type { Email, EmailDetail } from "~/types/email";
-import { toggleExpandedEmailId } from "~/utils/email-preview";
+import {
+	shouldLoadEmailPreview,
+	toggleExpandedEmailId,
+} from "~/utils/email-preview";
 import {
 	generateCustomEmailAddress,
 	generateEmailAddress,
@@ -414,6 +417,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const expandedEmailPreviewStatus = expandedEmailId
 		? emailPreviewStatusById[expandedEmailId]
 		: undefined;
+	const expandedEmailBody = expandedEmailId
+		? emailDetailsById[expandedEmailId]?.body
+		: undefined;
 
 	useEffect(() => {
 		setLastInboxRefreshAt(loaderData.renderedAt);
@@ -447,7 +453,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	}, [emails, expandedEmailId]);
 
 	useEffect(() => {
-		if (!expandedEmailId || expandedEmailPreviewStatus) {
+		if (
+			!expandedEmailId ||
+			!shouldLoadEmailPreview(expandedEmailBody, expandedEmailPreviewStatus)
+		) {
 			return;
 		}
 
@@ -495,7 +504,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [expandedEmailId, expandedEmailPreviewStatus]);
+	}, [expandedEmailBody, expandedEmailId]);
 
 	const syncPreviewFrameHeight = (
 		emailId: string,
