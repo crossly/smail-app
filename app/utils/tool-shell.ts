@@ -9,7 +9,7 @@ export type HomeToolSections = {
 	showGuides: boolean;
 	showNarrative: boolean;
 	panelOrder: ["address", "inbox"];
-	desktopColumns: [2, 8];
+	desktopColumns: [4, 6];
 };
 
 const TOOL_SHELL_CONFIG: ToolShellConfig = {
@@ -23,7 +23,7 @@ const HOME_TOOL_SECTIONS: HomeToolSections = {
 	showGuides: false,
 	showNarrative: false,
 	panelOrder: ["address", "inbox"],
-	desktopColumns: [2, 8],
+	desktopColumns: [4, 6],
 };
 
 export function getToolShellConfig(): ToolShellConfig {

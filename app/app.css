@@ -576,34 +576,6 @@
 		@apply flex flex-1 flex-col gap-4 px-4 py-4 sm:px-5;
 	}
 
-	.tool-facts {
-		@apply grid gap-2;
-	}
-
-	.tool-fact {
-		@apply rounded-[14px] border px-4 py-3;
-		border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
-		background: color-mix(in srgb, var(--surface-subtle) 94%, transparent);
-	}
-
-	.tool-fact-value {
-		@apply text-sm font-semibold;
-		font-family:
-			"Segoe UI",
-			"PingFang SC",
-			"Hiragino Sans GB",
-			"Microsoft YaHei",
-			-apple-system,
-			system-ui,
-			sans-serif;
-		color: var(--text-primary);
-	}
-
-	.tool-fact-label {
-		@apply mt-1 text-[12px] leading-relaxed;
-		color: var(--text-muted);
-	}
-
 	.tool-chip,
 	.tool-chip-button {
 		@apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium;
@@ -632,6 +604,50 @@
 		background: color-mix(in srgb, var(--surface-subtle) 96%, transparent);
 	}
 
+	.tool-prefix-shell {
+		@apply rounded-[16px] border px-4 py-4;
+		border-color: color-mix(in srgb, var(--line-soft) 82%, transparent);
+		background: color-mix(in srgb, var(--surface-subtle) 94%, transparent);
+	}
+
+	.tool-field-label {
+		@apply block text-[11px] font-semibold uppercase tracking-[0.12em];
+		color: var(--text-faint);
+	}
+
+	.tool-prefix-composer {
+		@apply mt-3 flex flex-col gap-2 rounded-[14px] border p-2.5;
+		border-color: color-mix(in srgb, var(--line-soft) 78%, transparent);
+		background: color-mix(in srgb, var(--surface-soft) 86%, transparent);
+	}
+
+	.tool-prefix-input {
+		@apply w-full min-w-0 border-0 bg-transparent px-0 py-0 text-sm leading-6 outline-none;
+		color: var(--text-primary);
+	}
+
+	.tool-prefix-input::placeholder {
+		color: var(--text-faint);
+	}
+
+	.tool-prefix-domain {
+		@apply break-all rounded-[10px] px-2.5 py-2 text-[12px] leading-relaxed;
+		color: var(--text-secondary);
+		background: color-mix(in srgb, var(--surface-subtle) 92%, transparent);
+	}
+
+	.tool-field-hint {
+		@apply mt-3 text-[11px] leading-relaxed;
+		color: var(--text-faint);
+	}
+
+	.tool-field-error {
+		@apply mt-3 rounded-[12px] border px-3 py-2 text-[12px] leading-relaxed;
+		color: #ffd0d0;
+		border-color: rgba(248, 113, 113, 0.42);
+		background: rgba(127, 29, 29, 0.18);
+	}
+
 	.tool-address {
 		@apply break-all text-sm font-semibold leading-6 sm:text-[0.95rem];
 		font-family:
@@ -657,6 +673,12 @@
 	.tool-note {
 		@apply text-[11px] leading-relaxed;
 		color: var(--text-faint);
+	}
+
+	:root[data-theme="light"] .tool-field-error {
+		color: #b42318;
+		border-color: rgba(239, 68, 68, 0.24);
+		background: rgba(254, 242, 242, 0.9);
 	}
 
 	.tool-empty-state {
@@ -743,6 +765,10 @@
 		background: color-mix(in srgb, var(--surface-subtle) 96%, transparent);
 	}
 
+	.email-thread {
+		@apply flex flex-col gap-2;
+	}
+
 	.email-item::before {
 		@apply absolute inset-0 opacity-0 transition-opacity duration-[180ms] ease-in-out;
 		content: "";
@@ -759,12 +785,62 @@
 		box-shadow: 0 8px 16px rgba(var(--accent-glow), 0.12);
 	}
 
+	.email-item[data-expanded="true"] {
+		border-color: color-mix(in srgb, var(--line-strong) 84%, transparent);
+		background: color-mix(in srgb, var(--surface-hover) 96%, transparent);
+		box-shadow: 0 10px 18px rgba(var(--accent-glow), 0.14);
+	}
+
 	.email-item:hover::before {
 		opacity: 1;
 	}
 
 	.email-item > * {
 		@apply relative z-[1];
+	}
+
+	.email-item-caret {
+		@apply inline-flex text-[11px] leading-none transition-transform duration-[180ms] ease-in-out;
+		color: var(--text-faint);
+	}
+
+	.email-item-caret[data-expanded="true"] {
+		transform: rotate(180deg);
+	}
+
+	.email-preview-panel {
+		@apply rounded-[16px] border p-3 sm:p-4;
+		border-color: color-mix(in srgb, var(--line-soft) 84%, transparent);
+		background: color-mix(in srgb, var(--surface-subtle) 94%, transparent);
+	}
+
+	.email-preview-meta {
+		@apply grid gap-2 sm:grid-cols-2;
+	}
+
+	.email-preview-meta-card {
+		@apply rounded-[14px] border px-3 py-3 text-[12px] leading-relaxed;
+		border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
+		background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+		color: var(--text-secondary);
+	}
+
+	.email-preview-meta-label {
+		@apply block text-[11px] font-semibold uppercase tracking-[0.1em];
+		color: var(--text-faint);
+	}
+
+	.email-preview-frame {
+		@apply w-full overflow-hidden rounded-xl border bg-white;
+		min-height: 26rem;
+		border-color: color-mix(in srgb, var(--line-soft) 76%, transparent);
+	}
+
+	.email-preview-empty {
+		@apply flex min-h-[18rem] items-center justify-center rounded-xl border border-dashed text-[13px];
+		border-color: color-mix(in srgb, var(--line-soft) 78%, transparent);
+		color: var(--text-muted);
+		background: color-mix(in srgb, var(--surface-soft) 76%, transparent);
 	}
 
 	.markdown-shell {

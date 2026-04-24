@@ -24,6 +24,11 @@ export interface Dictionary {
 		noAddressTitle: string;
 		noAddressDescription: string;
 		generateAddress: string;
+		customPrefixLabel: string;
+		customPrefixPlaceholder: string;
+		customPrefixHint: string;
+		customPrefixAction: string;
+		customPrefixError: string;
 		stats: {
 			lifetimeValue: string;
 			refreshValue: string;
@@ -94,6 +99,13 @@ const en: Dictionary = {
 		noAddressDescription:
 			"Generate a temporary address to use for sign-ups and one-off verifications.",
 		generateAddress: "Generate address",
+		customPrefixLabel: "Custom prefix",
+		customPrefixPlaceholder: "Reuse an older prefix",
+		customPrefixHint:
+			"Use 3-32 lowercase letters, numbers, or single hyphens.",
+		customPrefixAction: "Use this prefix",
+		customPrefixError:
+			"Use 3-32 lowercase letters, numbers, or single hyphens.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Instant",
@@ -166,6 +178,11 @@ const zh: Dictionary = {
 		noAddressTitle: "还没有临时邮箱",
 		noAddressDescription: "生成一个临时邮箱，用于注册和一次性验证。",
 		generateAddress: "生成地址",
+		customPrefixLabel: "自定义前缀",
+		customPrefixPlaceholder: "输入想复用的前缀",
+		customPrefixHint: "仅支持 3-32 位小写字母、数字或单个连字符。",
+		customPrefixAction: "使用此前缀",
+		customPrefixError: "请输入 3-32 位小写字母、数字或单个连字符。",
 		stats: {
 			lifetimeValue: "24小时",
 			refreshValue: "即时",
@@ -238,6 +255,13 @@ const es: Dictionary = {
 		noAddressDescription:
 			"Genera una dirección temporal para registros y verificaciones rápidas.",
 		generateAddress: "Generar dirección",
+		customPrefixLabel: "Prefijo personalizado",
+		customPrefixPlaceholder: "Reutiliza un prefijo anterior",
+		customPrefixHint:
+			"Usa 3-32 letras minúsculas, números o guiones simples.",
+		customPrefixAction: "Usar este prefijo",
+		customPrefixError:
+			"Usa 3-32 letras minúsculas, números o guiones simples.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Instantáneo",
@@ -306,6 +330,13 @@ const fr: Dictionary = {
 		noAddressDescription:
 			"Générez une adresse temporaire pour inscriptions et vérifications.",
 		generateAddress: "Générer une adresse",
+		customPrefixLabel: "Préfixe personnalisé",
+		customPrefixPlaceholder: "Réutiliser un ancien préfixe",
+		customPrefixHint:
+			"Utilisez 3-32 lettres minuscules, chiffres ou tirets simples.",
+		customPrefixAction: "Utiliser ce préfixe",
+		customPrefixError:
+			"Utilisez 3-32 lettres minuscules, chiffres ou tirets simples.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Instantané",
@@ -375,6 +406,13 @@ const de: Dictionary = {
 		noAddressDescription:
 			"Erzeuge eine temporäre Adresse für schnelle Registrierungen und Verifizierungen.",
 		generateAddress: "Adresse erzeugen",
+		customPrefixLabel: "Eigenes Präfix",
+		customPrefixPlaceholder: "Ein früheres Präfix wiederverwenden",
+		customPrefixHint:
+			"Verwende 3-32 Kleinbuchstaben, Ziffern oder einzelne Bindestriche.",
+		customPrefixAction: "Dieses Präfix nutzen",
+		customPrefixError:
+			"Verwende 3-32 Kleinbuchstaben, Ziffern oder einzelne Bindestriche.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Sofort",
@@ -442,6 +480,13 @@ const ja: Dictionary = {
 		noAddressTitle: "一時メールがまだありません",
 		noAddressDescription: "登録や認証のために一時アドレスを生成してください。",
 		generateAddress: "アドレス生成",
+		customPrefixLabel: "カスタム接頭辞",
+		customPrefixPlaceholder: "再利用したい接頭辞を入力",
+		customPrefixHint:
+			"3〜32文字の小文字、数字、単一ハイフンのみ使えます。",
+		customPrefixAction: "この接頭辞を使う",
+		customPrefixError:
+			"3〜32文字の小文字、数字、単一ハイフンを入力してください。",
 		stats: {
 			lifetimeValue: "24時間",
 			refreshValue: "即時",
@@ -510,6 +555,13 @@ const ko: Dictionary = {
 		noAddressTitle: "아직 임시 이메일이 없습니다",
 		noAddressDescription: "가입 및 인증에 사용할 임시 주소를 생성하세요.",
 		generateAddress: "주소 생성",
+		customPrefixLabel: "사용자 지정 접두사",
+		customPrefixPlaceholder: "다시 쓸 접두사를 입력하세요",
+		customPrefixHint:
+			"3-32자의 소문자, 숫자, 단일 하이픈만 사용할 수 있습니다.",
+		customPrefixAction: "이 접두사 사용",
+		customPrefixError:
+			"3-32자의 소문자, 숫자, 단일 하이픈만 입력하세요.",
 		stats: {
 			lifetimeValue: "24시간",
 			refreshValue: "즉시",
@@ -577,6 +629,13 @@ const ru: Dictionary = {
 		noAddressDescription:
 			"Создайте временный адрес для регистраций и разовых проверок.",
 		generateAddress: "Создать адрес",
+		customPrefixLabel: "Свой префикс",
+		customPrefixPlaceholder: "Повторно использовать старый префикс",
+		customPrefixHint:
+			"Используйте 3-32 строчные буквы, цифры или одиночные дефисы.",
+		customPrefixAction: "Использовать префикс",
+		customPrefixError:
+			"Используйте 3-32 строчные буквы, цифры или одиночные дефисы.",
 		stats: {
 			lifetimeValue: "24ч",
 			refreshValue: "Мгновенно",
@@ -646,6 +705,13 @@ const pt: Dictionary = {
 		noAddressDescription:
 			"Gere um endereço temporário para cadastros e verificações rápidas.",
 		generateAddress: "Gerar endereço",
+		customPrefixLabel: "Prefixo personalizado",
+		customPrefixPlaceholder: "Reutilize um prefixo antigo",
+		customPrefixHint:
+			"Use 3-32 letras minúsculas, números ou hífens simples.",
+		customPrefixAction: "Usar este prefixo",
+		customPrefixError:
+			"Use 3-32 letras minúsculas, números ou hífens simples.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Instantâneo",
@@ -714,6 +780,13 @@ const ar: Dictionary = {
 		noAddressTitle: "لا يوجد بريد مؤقت بعد",
 		noAddressDescription: "أنشئ عنوانًا مؤقتًا للتسجيل والتحقق السريع.",
 		generateAddress: "إنشاء عنوان",
+		customPrefixLabel: "بادئة مخصصة",
+		customPrefixPlaceholder: "أعد استخدام بادئة سابقة",
+		customPrefixHint:
+			"استخدم من 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطات مفردة.",
+		customPrefixAction: "استخدام هذه البادئة",
+		customPrefixError:
+			"استخدم من 3 إلى 32 حرفًا صغيرًا أو رقمًا أو شرطات مفردة.",
 		stats: {
 			lifetimeValue: "24س",
 			refreshValue: "فوري",

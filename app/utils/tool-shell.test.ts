@@ -20,5 +20,5 @@ test("home surface keeps only address and inbox workflows", () => {
 	assert.equal(sections.showNarrative, false);
 	assert.equal(sections.showGuides, false);
 	assert.deepEqual(sections.panelOrder, ["address", "inbox"]);
-	assert.deepEqual(sections.desktopColumns, [2, 8]);
+	assert.deepEqual(sections.desktopColumns, [4, 6]);
 });
