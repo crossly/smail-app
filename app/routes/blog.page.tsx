@@ -12,8 +12,9 @@ import {
 	stripDefaultLocalePrefix,
 	toLocalePath,
 } from "~/i18n/config";
-import { BASE_URL, isBlogLocaleIndexable } from "~/seo.config";
+import { isBlogLocaleIndexable } from "~/seo.config";
 import { mergeRouteMeta } from "~/utils/meta";
+import { getSiteConfigFromMatches, useSiteConfig } from "~/utils/site-config";
 import type { Route } from "./+types/blog.page";
 import {
 	formatBlogPageTitle,
@@ -46,7 +47,8 @@ function parsePageParam(pageParam: string | undefined): number | null {
 
 export function meta({ params, loaderData, matches }: Route.MetaArgs) {
 	const locale = getLocaleFromParams(params.lang);
-	const copy = getBlogListCopy(locale);
+	const siteConfig = getSiteConfigFromMatches(matches);
+	const copy = getBlogListCopy(locale, siteConfig);
 	const currentPage = loaderData?.page ?? parsePageParam(params.page) ?? 2;
 
 	return mergeRouteMeta(matches, [
@@ -102,10 +104,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function BlogPagedListPage({
 	loaderData,
 }: Route.ComponentProps) {
+	const siteConfig = useSiteConfig();
 	const locale = loaderData.locale || DEFAULT_LOCALE;
-	const copy = getBlogListCopy(locale);
-	const uiCopy = getBlogUiCopy(locale);
-	const blogUrl = `${BASE_URL}${toLocalePath(getBlogPagePath(loaderData.page), locale)}`;
+	const copy = getBlogListCopy(locale, siteConfig);
+	const uiCopy = getBlogUiCopy(locale, siteConfig);
+	const blogUrl = `${siteConfig.siteUrl}${toLocalePath(getBlogPagePath(loaderData.page), locale)}`;
 	const itemListJsonLd = {
 		"@context": "https://schema.org",
 		"@type": "ItemList",
@@ -117,7 +120,7 @@ export default function BlogPagedListPage({
 		itemListElement: loaderData.posts.map((post, index) => ({
 			"@type": "ListItem",
 			position: (loaderData.page - 1) * BLOG_PAGE_SIZE + index + 1,
-			url: `${BASE_URL}${toLocalePath(`/blog/${post.slug}`, locale)}`,
+			url: `${siteConfig.siteUrl}${toLocalePath(`/blog/${post.slug}`, locale)}`,
 			name: post.title,
 		})),
 	};

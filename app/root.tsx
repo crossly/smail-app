@@ -20,7 +20,6 @@ import {
 	toLocalePath,
 } from "~/i18n/config";
 import {
-	BASE_URL,
 	BLOG_INDEXABLE_LOCALES,
 	isBlogBasePath,
 	isBlogLocaleIndexable,
@@ -28,6 +27,11 @@ import {
 	isMarkdownLocaleIndexable,
 	MARKDOWN_INDEXABLE_LOCALES,
 } from "~/seo.config";
+import {
+	DEFAULT_SITE_CONFIG,
+	createSiteConfig,
+	replaceSiteText,
+} from "~/utils/site-config";
 import { DEFAULT_THEME, parseThemeFromCookieHeader } from "~/utils/theme";
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -36,12 +40,16 @@ const SITE_OG_TITLE = "smail.pw · 24-Hour Temporary Email";
 const SITE_OG_DESCRIPTION =
 	"Free disposable email inbox with 24-hour auto-expiry. Use a temporary address for sign-ups and verification.";
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
 	const theme = parseThemeFromCookieHeader(request.headers.get("Cookie"));
-	return { theme };
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+	});
+	return { theme, siteConfig };
 }
 
-export function meta({ location }: Route.MetaArgs) {
+export function meta({ data, location }: Route.MetaArgs) {
+	const siteConfig = data?.siteConfig ?? DEFAULT_SITE_CONFIG;
 	const pathname = normalizePathname(location.pathname);
 	const locale = getLocaleFromPathname(pathname);
 	const basePath = stripLocalePrefix(pathname);
@@ -56,7 +64,7 @@ export function meta({ location }: Route.MetaArgs) {
 				: locale;
 	const canonicalPath = toLocalePath(basePath, canonicalLocale);
 	const rssLocale = canonicalLocale === "zh" ? "zh" : DEFAULT_LOCALE;
-	const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+	const canonicalUrl = `${siteConfig.siteUrl}${canonicalPath}`;
 	const alternateLocales = isMarkdownPage
 		? MARKDOWN_INDEXABLE_LOCALES
 		: isBlogPage
@@ -66,8 +74,11 @@ export function meta({ location }: Route.MetaArgs) {
 		tagName: "link" as const,
 		rel: "alternate",
 		hrefLang: supportedLocale,
-		href: `${BASE_URL}${toLocalePath(basePath, supportedLocale)}`,
+		href: `${siteConfig.siteUrl}${toLocalePath(basePath, supportedLocale)}`,
 	}));
+	const siteOgTitle = replaceSiteText(SITE_OG_TITLE, siteConfig);
+	const siteOgDescription = replaceSiteText(SITE_OG_DESCRIPTION, siteConfig);
+	const rssTitle = replaceSiteText("smail.pw Blog RSS", siteConfig);
 
 	return [
 		{
@@ -80,14 +91,14 @@ export function meta({ location }: Route.MetaArgs) {
 			tagName: "link",
 			rel: "alternate",
 			hrefLang: "x-default",
-			href: `${BASE_URL}${toLocalePath(basePath, DEFAULT_LOCALE)}`,
+			href: `${siteConfig.siteUrl}${toLocalePath(basePath, DEFAULT_LOCALE)}`,
 		},
 		{
 			tagName: "link",
 			rel: "alternate",
 			type: "application/rss+xml",
-			title: "smail.pw Blog RSS",
-			href: `${BASE_URL}${toLocalePath("/rss.xml", rssLocale)}`,
+			title: rssTitle,
+			href: `${siteConfig.siteUrl}${toLocalePath("/rss.xml", rssLocale)}`,
 		},
 		{
 			property: "og:type",
@@ -95,7 +106,7 @@ export function meta({ location }: Route.MetaArgs) {
 		},
 		{
 			property: "og:site_name",
-			content: "smail.pw",
+			content: siteConfig.siteName,
 		},
 		{
 			property: "og:url",
@@ -103,11 +114,11 @@ export function meta({ location }: Route.MetaArgs) {
 		},
 		{
 			property: "og:title",
-			content: SITE_OG_TITLE,
+			content: siteOgTitle,
 		},
 		{
 			property: "og:description",
-			content: SITE_OG_DESCRIPTION,
+			content: siteOgDescription,
 		},
 		{
 			name: "twitter:card",
@@ -115,11 +126,11 @@ export function meta({ location }: Route.MetaArgs) {
 		},
 		{
 			name: "twitter:title",
-			content: SITE_OG_TITLE,
+			content: siteOgTitle,
 		},
 		{
 			name: "twitter:description",
-			content: SITE_OG_DESCRIPTION,
+			content: siteOgDescription,
 		},
 	];
 }

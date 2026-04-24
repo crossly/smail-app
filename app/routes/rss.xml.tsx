@@ -5,7 +5,12 @@ import {
 	resolveLocaleParam,
 	toLocalePath,
 } from "~/i18n/config";
-import { BASE_URL } from "~/seo.config";
+import {
+	DEFAULT_SITE_CONFIG,
+	type SiteConfig,
+	createSiteConfig,
+	replaceSiteTextDeep,
+} from "~/utils/site-config";
 import type { Route } from "./+types/rss.xml";
 
 function getFeedLocale(lang: string | undefined): Locale {
@@ -45,7 +50,14 @@ function getFeedCopy(locale: Locale): {
 	};
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+function getLocalizedFeedCopy(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+) {
+	return replaceSiteTextDeep(getFeedCopy(locale), siteConfig);
+}
+
+export async function loader({ params, request, context }: Route.LoaderArgs) {
 	const requestedLocale = getFeedLocale(params.lang);
 	const normalizedLocale = normalizeFeedLocale(requestedLocale);
 	const { shouldRedirectToDefault } = resolveLocaleParam(params.lang);
@@ -60,10 +72,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 		});
 	}
 
-	const feedCopy = getFeedCopy(normalizedLocale);
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+		requestUrl: request.url,
+	});
+	const feedCopy = getLocalizedFeedCopy(normalizedLocale, siteConfig);
 	const posts = listBlogPosts(normalizedLocale);
-	const feedUrl = `${BASE_URL}${toLocalePath("/rss.xml", normalizedLocale)}`;
-	const blogUrl = `${BASE_URL}${toLocalePath("/blog", normalizedLocale)}`;
+	const feedUrl = `${siteConfig.siteUrl}${toLocalePath("/rss.xml", normalizedLocale)}`;
+	const blogUrl = `${siteConfig.siteUrl}${toLocalePath("/blog", normalizedLocale)}`;
 
 	const body =
 		`<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -76,7 +92,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 		`<atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="${escapeXml(feedUrl)}" rel="self" type="application/rss+xml" />\n` +
 		posts
 			.map((post) => {
-				const postUrl = `${BASE_URL}${toLocalePath(`/blog/${post.slug}`, normalizedLocale)}`;
+				const postUrl = `${siteConfig.siteUrl}${toLocalePath(`/blog/${post.slug}`, normalizedLocale)}`;
 				const updated = post.updatedAt ?? post.publishedAt;
 				return (
 					`<item>\n` +

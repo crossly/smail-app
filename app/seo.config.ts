@@ -1,7 +1,8 @@
 import { BLOG_LOCALES } from "~/blog/data";
 import { type Locale, SUPPORTED_LOCALES } from "~/i18n/config";
+import { DEFAULT_SITE_URL } from "~/utils/site-config";
 
-export const BASE_URL = "https://smail.pw";
+export const BASE_URL = DEFAULT_SITE_URL;
 
 export const MARKDOWN_BASE_PATHS = [
 	"/about",

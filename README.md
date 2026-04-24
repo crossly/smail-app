@@ -1,10 +1,10 @@
-# smail.pw（smail-v3）
+# mail.056650.xyz（smail-v3）
 
 基于 React Router Framework Mode + Cloudflare Workers 的临时邮箱服务。
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/akazwz/smail)
 
-- 线上域名：`https://smail.pw`
+- 当前站点域名：`https://mail.056650.xyz`
 - Worker 名称：`smail-app`
 - 默认语言：`en`（同时支持 10 种语言）
 
@@ -12,6 +12,7 @@
 
 - 上方按钮可让其他开发者将本项目一键部署到他们自己的 Cloudflare 账号。
 - 部署流程会基于仓库中的 `wrangler.jsonc` 自动创建并绑定所需资源（D1 / R2）。
+- 当前仓库默认把自定义域名与收信域名配置为 `mail.056650.xyz`；如果你要部署到别的域名，请同步修改 `wrangler.jsonc` 和 `.env.example` 中的域名变量。
 - 项目仓库需要保持公开（public）才能让他人正常使用该按钮。
 
 ## 项目简介
@@ -125,7 +126,15 @@ pnpm run preview
 
 - `D1`：邮件元数据（数据库名 `smail-v3`）
 - `R2`：邮件内容对象存储（桶名 `smailv3`）
+- `routes`：自定义域名路由（当前为 `mail.056650.xyz`）
 - `triggers.crons`：`*/30 * * * *`（30 分钟触发一次，当前 `scheduled` 未实现清理）
+
+此外当前通过环境变量配置以下站点域名信息：
+
+- `SITE_DOMAIN`：站点展示域名，用于品牌名、SEO 文案替换等
+- `SITE_URL`：站点基准 URL，用于 canonical / sitemap / RSS / 结构化数据
+- `MAIL_DOMAIN`：生成临时邮箱地址时使用的收件域名
+- `SUPPORT_EMAIL`：联系页与 Markdown 文案中的支持邮箱
 
 此外还需要配置一个 Worker Secret：
 

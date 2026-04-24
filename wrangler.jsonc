@@ -3,6 +3,18 @@
 	"name": "smail-app",
 	"compatibility_date": "2025-11-26",
 	"main": "./workers/app.ts",
+	"routes": [
+		{
+			"pattern": "mail.056650.xyz",
+			"custom_domain": true
+		}
+	],
+	"vars": {
+		"SITE_DOMAIN": "mail.056650.xyz",
+		"SITE_URL": "https://mail.056650.xyz",
+		"MAIL_DOMAIN": "mail.056650.xyz",
+		"SUPPORT_EMAIL": "support@mail.056650.xyz"
+	},
 	"secrets": {
 		"required": ["SESSION_SECRETS"]
 	},

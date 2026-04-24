@@ -1,4 +1,9 @@
 import type { Locale } from "./config";
+import {
+	DEFAULT_SITE_CONFIG,
+	type SiteConfig,
+	replaceSiteTextDeep,
+} from "~/utils/site-config";
 
 export interface Dictionary {
 	home: {
@@ -767,6 +772,9 @@ const messages: Record<Locale, Dictionary> = {
 	ar,
 };
 
-export function getDictionary(locale: Locale): Dictionary {
-	return messages[locale];
+export function getDictionary(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): Dictionary {
+	return replaceSiteTextDeep(messages[locale], siteConfig);
 }

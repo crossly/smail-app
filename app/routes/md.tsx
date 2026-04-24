@@ -9,8 +9,17 @@ import {
 	stripLocalePrefix,
 	toLocalePath,
 } from "~/i18n/config";
-import { BASE_URL, isMarkdownLocaleIndexable } from "~/seo.config";
+import { isMarkdownLocaleIndexable } from "~/seo.config";
 import { mergeRouteMeta } from "~/utils/meta";
+import {
+	DEFAULT_SITE_CONFIG,
+	type SiteConfig,
+	createSiteConfig,
+	getSiteConfigFromMatches,
+	replaceSiteText,
+	replaceSiteTextDeep,
+	useSiteConfig,
+} from "~/utils/site-config";
 import type { Route } from "./+types/md";
 
 const KNOWN_MD_PAGES = [
@@ -1172,8 +1181,15 @@ function isArticleMarkdownSlug(
 	return (ARTICLE_MD_PAGES as readonly string[]).includes(value);
 }
 
-function getMarkdownSeoCopy(locale: Locale, slug: MarkdownPageSlug) {
-	return mdMetaCopy[slug][locale] ?? mdMetaCopy[slug][DEFAULT_LOCALE];
+function getMarkdownSeoCopy(
+	locale: Locale,
+	slug: MarkdownPageSlug,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+) {
+	return replaceSiteTextDeep(
+		mdMetaCopy[slug][locale] ?? mdMetaCopy[slug][DEFAULT_LOCALE],
+		siteConfig,
+	);
 }
 
 function getMarkdownSlugFromPathname(
@@ -1188,7 +1204,11 @@ function getMarkdownSlugFromPathname(
 	return slug;
 }
 
-function getFaqJsonLd(locale: Locale, pageUrl: string) {
+function getFaqJsonLd(
+	locale: Locale,
+	pageUrl: string,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+) {
 	const entries =
 		FAQ_JSON_LD_COPY[locale] ?? FAQ_JSON_LD_COPY[DEFAULT_LOCALE] ?? [];
 	return {
@@ -1203,7 +1223,15 @@ function getFaqJsonLd(locale: Locale, pageUrl: string) {
 			},
 		})),
 		url: pageUrl,
-	};
+	} satisfies Record<string, unknown>;
+}
+
+function getLocalizedFaqJsonLd(
+	locale: Locale,
+	pageUrl: string,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+) {
+	return replaceSiteTextDeep(getFaqJsonLd(locale, pageUrl, siteConfig), siteConfig);
 }
 
 function getHeadlineFromMetaTitle(title: string): string {
@@ -1215,8 +1243,9 @@ function getArticleJsonLd(
 	locale: Locale,
 	slug: ArticleMarkdownSlug,
 	pageUrl: string,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
 ) {
-	const pageMeta = getMarkdownSeoCopy(locale, slug);
+	const pageMeta = getMarkdownSeoCopy(locale, slug, siteConfig);
 	return {
 		"@context": "https://schema.org",
 		"@type": "Article",
@@ -1228,12 +1257,12 @@ function getArticleJsonLd(
 		dateModified: "2026-03-01",
 		author: {
 			"@type": "Organization",
-			name: "smail.pw",
+			name: siteConfig.siteName,
 		},
 		publisher: {
 			"@type": "Organization",
-			name: "smail.pw",
-			url: BASE_URL,
+			name: siteConfig.siteName,
+			url: siteConfig.siteUrl,
 		},
 	};
 }
@@ -1242,8 +1271,9 @@ function getBreadcrumbJsonLd(
 	locale: Locale,
 	slug: ArticleMarkdownSlug,
 	pageUrl: string,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
 ) {
-	const pageMeta = getMarkdownSeoCopy(locale, slug);
+	const pageMeta = getMarkdownSeoCopy(locale, slug, siteConfig);
 	return {
 		"@context": "https://schema.org",
 		"@type": "BreadcrumbList",
@@ -1254,7 +1284,7 @@ function getBreadcrumbJsonLd(
 				name:
 					HOME_BREADCRUMB_LABEL[locale] ??
 					HOME_BREADCRUMB_LABEL[DEFAULT_LOCALE],
-				item: `${BASE_URL}${toLocalePath("/", locale)}`,
+				item: `${siteConfig.siteUrl}${toLocalePath("/", locale)}`,
 			},
 			{
 				"@type": "ListItem",
@@ -1266,17 +1296,24 @@ function getBreadcrumbJsonLd(
 	};
 }
 
-function getInternalCtaCopy(locale: Locale): InternalCtaCopy {
-	return INTERNAL_CTA_COPY[locale] ?? INTERNAL_CTA_COPY[DEFAULT_LOCALE];
+function getInternalCtaCopy(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): InternalCtaCopy {
+	return replaceSiteTextDeep(
+		INTERNAL_CTA_COPY[locale] ?? INTERNAL_CTA_COPY[DEFAULT_LOCALE],
+		siteConfig,
+	);
 }
 
 export function meta({ params, location, matches }: Route.MetaArgs) {
 	const { locale } = resolveLocaleParam(params.lang);
+	const siteConfig = getSiteConfigFromMatches(matches);
 	const slug = getMarkdownSlugFromPathname(location.pathname);
 	if (!slug) {
 		return mergeRouteMeta(matches, []);
 	}
-	const pageMeta = getMarkdownSeoCopy(locale, slug);
+	const pageMeta = getMarkdownSeoCopy(locale, slug, siteConfig);
 
 	return mergeRouteMeta(matches, [
 		{ title: pageMeta.title },
@@ -1290,7 +1327,7 @@ export function meta({ params, location, matches }: Route.MetaArgs) {
 	]);
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+export async function loader({ params, request, context }: Route.LoaderArgs) {
 	const { locale, shouldRedirectToDefault, isInvalid } = resolveLocaleParam(
 		params.lang,
 	);
@@ -1327,7 +1364,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 	if (!source) {
 		throw new Response("Not Found", { status: 404 });
 	}
-	const ast = Markdoc.parse(source);
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+		requestUrl: request.url,
+	});
+	const ast = Markdoc.parse(replaceSiteText(source, siteConfig));
 	const content = Markdoc.transform(ast);
 	const html = Markdoc.renderers.html(content);
 
@@ -1335,17 +1376,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function MarkdownPage({ loaderData }: Route.ComponentProps) {
-	const pageUrl = `${BASE_URL}${toLocalePath(`/${loaderData.slug}`, loaderData.locale)}`;
+	const siteConfig = useSiteConfig();
+	const pageUrl = `${siteConfig.siteUrl}${toLocalePath(`/${loaderData.slug}`, loaderData.locale)}`;
 	const faqJsonLd =
-		loaderData.slug === "faq" ? getFaqJsonLd(loaderData.locale, pageUrl) : null;
+		loaderData.slug === "faq"
+			? getLocalizedFaqJsonLd(loaderData.locale, pageUrl, siteConfig)
+			: null;
 	const articleJsonLd = isArticleMarkdownSlug(loaderData.slug)
-		? getArticleJsonLd(loaderData.locale, loaderData.slug, pageUrl)
+		? getArticleJsonLd(loaderData.locale, loaderData.slug, pageUrl, siteConfig)
 		: null;
 	const breadcrumbJsonLd = isArticleMarkdownSlug(loaderData.slug)
-		? getBreadcrumbJsonLd(loaderData.locale, loaderData.slug, pageUrl)
+		? getBreadcrumbJsonLd(loaderData.locale, loaderData.slug, pageUrl, siteConfig)
 		: null;
 	const infoCta = isInfoMarkdownSlug(loaderData.slug)
-		? getInternalCtaCopy(loaderData.locale)
+		? getInternalCtaCopy(loaderData.locale, siteConfig)
 		: null;
 
 	return (

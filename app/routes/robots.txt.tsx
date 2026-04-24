@@ -1,14 +1,19 @@
-import { BASE_URL } from "~/seo.config";
+import { createSiteConfig } from "~/utils/site-config";
+import type { Route } from "./+types/robots.txt";
 
-export async function loader() {
+export async function loader({ request, context }: Route.LoaderArgs) {
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+		requestUrl: request.url,
+	});
 	const body = [
 		"User-agent: *",
 		"Allow: /",
 		"Disallow: /api/",
 		"",
-		`Sitemap: ${BASE_URL}/sitemap.xml`,
-		`Feed: ${BASE_URL}/rss.xml`,
-		`Feed: ${BASE_URL}/zh/rss.xml`,
+		`Sitemap: ${siteConfig.siteUrl}/sitemap.xml`,
+		`Feed: ${siteConfig.siteUrl}/rss.xml`,
+		`Feed: ${siteConfig.siteUrl}/zh/rss.xml`,
 		"",
 	].join("\n");
 

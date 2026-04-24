@@ -7,10 +7,12 @@
   "compilerOptions": {
     "checkJs": true,
     "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "types": [
+        "node",
         "./worker-configuration.d.ts"
     ]
   }

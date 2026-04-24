@@ -8,8 +8,14 @@ import {
 	stripDefaultLocalePrefix,
 	toLocalePath,
 } from "~/i18n/config";
-import { BASE_URL, isBlogLocaleIndexable } from "~/seo.config";
+import { isBlogLocaleIndexable } from "~/seo.config";
 import { mergeRouteMeta } from "~/utils/meta";
+import {
+	createSiteConfig,
+	getSiteConfigFromMatches,
+	replaceSiteText,
+	useSiteConfig,
+} from "~/utils/site-config";
 import type { Route } from "./+types/blog.post";
 import {
 	formatBlogPublishedDate,
@@ -31,17 +37,18 @@ function getLocaleFromParams(lang: string | undefined): Locale {
 
 export function meta({ params, matches }: Route.MetaArgs) {
 	const locale = getLocaleFromParams(params.lang);
+	const siteConfig = getSiteConfigFromMatches(matches);
 	const slug = params.slug ?? "";
 	const post = getBlogPostMeta(locale, slug);
 	if (!post) {
 		return mergeRouteMeta(matches, [
-			{ title: getBlogNotFoundMetaTitle(locale) },
+			{ title: getBlogNotFoundMetaTitle(locale, siteConfig) },
 			{ name: "robots", content: "noindex, nofollow" },
 		]);
 	}
 
 	return mergeRouteMeta(matches, [
-		{ title: getBlogPostMetaTitle(locale, post.title) },
+		{ title: getBlogPostMetaTitle(locale, post.title, siteConfig) },
 		{ name: "description", content: post.description },
 		{
 			name: "robots",
@@ -52,7 +59,7 @@ export function meta({ params, matches }: Route.MetaArgs) {
 	]);
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+export async function loader({ params, request, context }: Route.LoaderArgs) {
 	const { locale, shouldRedirectToDefault, isInvalid } = resolveLocaleParam(
 		params.lang,
 	);
@@ -80,8 +87,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 	if (!source) {
 		throw new Response("Not Found", { status: 404 });
 	}
-
-	const ast = Markdoc.parse(source);
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+		requestUrl: request.url,
+	});
+	const ast = Markdoc.parse(replaceSiteText(source, siteConfig));
 	const content = Markdoc.transform(ast);
 	const html = Markdoc.renderers.html(content);
 	const related = listBlogPosts(locale)
@@ -92,10 +102,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function BlogPostPage({ loaderData }: Route.ComponentProps) {
+	const siteConfig = useSiteConfig();
 	const locale = loaderData.locale || DEFAULT_LOCALE;
-	const uiCopy = getBlogUiCopy(locale);
+	const uiCopy = getBlogUiCopy(locale, siteConfig);
 	const postPath = `/blog/${loaderData.post.slug}`;
-	const articleUrl = `${BASE_URL}${toLocalePath(postPath, locale)}`;
+	const articleUrl = `${siteConfig.siteUrl}${toLocalePath(postPath, locale)}`;
 	const articleJsonLd = {
 		"@context": "https://schema.org",
 		"@type": "BlogPosting",
@@ -110,14 +121,14 @@ export default function BlogPostPage({ loaderData }: Route.ComponentProps) {
 		},
 		author: {
 			"@type": "Organization",
-			name: "smail.pw",
+			name: siteConfig.siteName,
 		},
 		publisher: {
 			"@type": "Organization",
-			name: "smail.pw",
+			name: siteConfig.siteName,
 			logo: {
 				"@type": "ImageObject",
-				url: `${BASE_URL}/favicon.ico`,
+				url: `${siteConfig.siteUrl}/favicon.ico`,
 			},
 		},
 		url: articleUrl,

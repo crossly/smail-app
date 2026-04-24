@@ -13,8 +13,16 @@ import {
 	toIntlLocale,
 	toLocalePath,
 } from "~/i18n/config";
-import { BASE_URL, isBlogLocaleIndexable } from "~/seo.config";
+import { isBlogLocaleIndexable } from "~/seo.config";
 import { mergeRouteMeta } from "~/utils/meta";
+import {
+	DEFAULT_SITE_CONFIG,
+	type SiteConfig,
+	getSiteConfigFromMatches,
+	replaceSiteText,
+	replaceSiteTextDeep,
+	useSiteConfig,
+} from "~/utils/site-config";
 import type { Route } from "./+types/blog";
 
 function getLocaleFromParams(lang: string | undefined): Locale {
@@ -193,17 +201,23 @@ const BLOG_COPY: Record<Locale, BlogCopy> = {
 	},
 };
 
-function getBlogCopy(locale: Locale): BlogCopy {
-	return BLOG_COPY[locale];
+function getBlogCopy(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): BlogCopy {
+	return replaceSiteTextDeep(BLOG_COPY[locale] ?? BLOG_COPY.en, siteConfig);
 }
 
-export function getBlogListCopy(locale: Locale): {
+export function getBlogListCopy(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): {
 	title: string;
 	description: string;
 	header: string;
 	subheader: string;
 } {
-	const copy = getBlogCopy(locale);
+	const copy = getBlogCopy(locale, siteConfig);
 	return {
 		title: copy.title,
 		description: copy.description,
@@ -214,6 +228,7 @@ export function getBlogListCopy(locale: Locale): {
 
 export function getBlogUiCopy(
 	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
 ): Omit<
 	BlogCopy,
 	"title" | "description" | "header" | "subheader" | "postTitleSuffix"
@@ -226,7 +241,7 @@ export function getBlogUiCopy(
 		backToBlog,
 		relatedPosts,
 		currentArticle,
-	} = getBlogCopy(locale);
+	} = getBlogCopy(locale, siteConfig);
 	return {
 		tag,
 		readArticle,
@@ -241,15 +256,16 @@ export function getBlogUiCopy(
 export function getBlogPostMetaTitle(
 	locale: Locale,
 	postTitle: string,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
 ): string {
 	const maxTitleLength = 60;
-	const localizedSuffix = getBlogCopy(locale).postTitleSuffix;
+	const localizedSuffix = getBlogCopy(locale, siteConfig).postTitleSuffix;
 	const titleWithLocalizedSuffix = `${postTitle}${localizedSuffix}`;
 	if (titleWithLocalizedSuffix.length <= maxTitleLength) {
 		return titleWithLocalizedSuffix;
 	}
 
-	const fallbackSuffix = " | smail.pw";
+	const fallbackSuffix = replaceSiteText(" | smail.pw", siteConfig);
 	const titleWithFallbackSuffix = `${postTitle}${fallbackSuffix}`;
 	if (titleWithFallbackSuffix.length <= maxTitleLength) {
 		return titleWithFallbackSuffix;
@@ -262,8 +278,11 @@ export function getBlogPostMetaTitle(
 	return `${postTitle.slice(0, maxTitleLength - 1)}…`;
 }
 
-export function getBlogNotFoundMetaTitle(locale: Locale): string {
-	return getBlogCopy(locale).title;
+export function getBlogNotFoundMetaTitle(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): string {
+	return getBlogCopy(locale, siteConfig).title;
 }
 
 export function formatBlogPageTitle(
@@ -322,7 +341,8 @@ export function getBlogPagePath(page: number): string {
 
 export function meta({ params, matches }: Route.MetaArgs) {
 	const locale = getLocaleFromParams(params.lang);
-	const copy = getBlogListCopy(locale);
+	const siteConfig = getSiteConfigFromMatches(matches);
+	const copy = getBlogListCopy(locale, siteConfig);
 	const metaItems = [
 		{ title: copy.title },
 		{ name: "description", content: copy.description },
@@ -364,10 +384,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function BlogListPage({ loaderData }: Route.ComponentProps) {
+	const siteConfig = useSiteConfig();
 	const locale = loaderData.locale || DEFAULT_LOCALE;
-	const copy = getBlogListCopy(locale);
-	const uiCopy = getBlogUiCopy(locale);
-	const blogUrl = `${BASE_URL}${toLocalePath(getBlogPagePath(loaderData.page), locale)}`;
+	const copy = getBlogListCopy(locale, siteConfig);
+	const uiCopy = getBlogUiCopy(locale, siteConfig);
+	const blogUrl = `${siteConfig.siteUrl}${toLocalePath(getBlogPagePath(loaderData.page), locale)}`;
 	const itemListJsonLd = {
 		"@context": "https://schema.org",
 		"@type": "ItemList",
@@ -379,7 +400,7 @@ export default function BlogListPage({ loaderData }: Route.ComponentProps) {
 		itemListElement: loaderData.posts.map((post, index) => ({
 			"@type": "ListItem",
 			position: index + 1,
-			url: `${BASE_URL}${toLocalePath(`/blog/${post.slug}`, locale)}`,
+			url: `${siteConfig.siteUrl}${toLocalePath(`/blog/${post.slug}`, locale)}`,
 			name: post.title,
 		})),
 	};

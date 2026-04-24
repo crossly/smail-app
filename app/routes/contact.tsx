@@ -5,11 +5,15 @@ import {
 	toLocalePath,
 	type Locale,
 } from "~/i18n/config";
-import { BASE_URL } from "~/seo.config";
 import { mergeRouteMeta } from "~/utils/meta";
+import {
+	DEFAULT_SITE_CONFIG,
+	type SiteConfig,
+	getSiteConfigFromMatches,
+	replaceSiteTextDeep,
+	useSiteConfig,
+} from "~/utils/site-config";
 import type { Route } from "./+types/contact";
-
-const SUPPORT_EMAIL = "support@smail.pw";
 
 type ContactCopy = {
 	metaTitle: string;
@@ -166,13 +170,20 @@ const CONTACT_COPY: Record<Locale, ContactCopy> = {
 	},
 };
 
-function getContactCopy(locale: Locale): ContactCopy {
-	return CONTACT_COPY[locale] ?? CONTACT_COPY[DEFAULT_LOCALE];
+function getContactCopy(
+	locale: Locale,
+	siteConfig: SiteConfig = DEFAULT_SITE_CONFIG,
+): ContactCopy {
+	return replaceSiteTextDeep(
+		CONTACT_COPY[locale] ?? CONTACT_COPY[DEFAULT_LOCALE],
+		siteConfig,
+	);
 }
 
 export function meta({ params, matches }: Route.MetaArgs) {
 	const { locale } = resolveLocaleParam(params.lang);
-	const copy = getContactCopy(locale);
+	const siteConfig = getSiteConfigFromMatches(matches);
+	const copy = getContactCopy(locale, siteConfig);
 	return mergeRouteMeta(matches, [
 		{ title: copy.metaTitle },
 		{ name: "description", content: copy.metaDescription },
@@ -182,8 +193,9 @@ export function meta({ params, matches }: Route.MetaArgs) {
 
 export default function ContactPage({ params }: Route.ComponentProps) {
 	const { locale } = resolveLocaleParam(params.lang);
-	const copy = getContactCopy(locale);
-	const contactUrl = `${BASE_URL}${toLocalePath("/contact", locale)}`;
+	const siteConfig = useSiteConfig();
+	const copy = getContactCopy(locale, siteConfig);
+	const contactUrl = `${siteConfig.siteUrl}${toLocalePath("/contact", locale)}`;
 	const contactJsonLd = {
 		"@context": "https://schema.org",
 		"@type": "ContactPage",
@@ -192,8 +204,8 @@ export default function ContactPage({ params }: Route.ComponentProps) {
 		description: copy.description,
 		mainEntity: {
 			"@type": "Organization",
-			name: "smail.pw",
-			email: SUPPORT_EMAIL,
+			name: siteConfig.siteName,
+			email: siteConfig.supportEmail,
 		},
 	};
 
@@ -217,12 +229,12 @@ export default function ContactPage({ params }: Route.ComponentProps) {
 						{copy.emailLabel}
 					</p>
 					<a
-						href={`mailto:${SUPPORT_EMAIL}`}
+						href={`mailto:${siteConfig.supportEmail}`}
 						className="theme-badge inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold"
 					>
 						<span>{copy.emailCta}</span>
 						<span className="text-theme-faint">·</span>
-						<span>{SUPPORT_EMAIL}</span>
+						<span>{siteConfig.supportEmail}</span>
 						<span aria-hidden="true">{"->"}</span>
 					</a>
 				</div>

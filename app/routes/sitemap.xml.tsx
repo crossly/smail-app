@@ -1,16 +1,21 @@
 import { getAllBlogSlugs, getBlogPageCount } from "~/blog/data";
 import { SUPPORTED_LOCALES, toLocalePath } from "~/i18n/config";
 import {
-	BASE_URL,
 	BLOG_BASE_PATH,
 	BLOG_INDEXABLE_LOCALES,
 	MARKDOWN_BASE_PATHS,
 	MARKDOWN_INDEXABLE_LOCALES,
 } from "~/seo.config";
+import { createSiteConfig } from "~/utils/site-config";
+import type { Route } from "./+types/sitemap.xml";
 
 const STATIC_PATHS = ["/", "/contact"] as const;
 
-export async function loader() {
+export async function loader({ request, context }: Route.LoaderArgs) {
+	const siteConfig = createSiteConfig({
+		env: context.cloudflare.env,
+		requestUrl: request.url,
+	});
 	const lastmod = new Date().toISOString();
 	const seen = new Set<string>();
 	const allPaths: string[] = [];
@@ -70,7 +75,7 @@ export async function loader() {
 		`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
 		allPaths
 			.map((path) => {
-				return `\n  <url>\n    <loc>${BASE_URL}${path}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
+				return `\n  <url>\n    <loc>${siteConfig.siteUrl}${path}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
 			})
 			.join("") +
 		"\n</urlset>\n";
