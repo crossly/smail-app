@@ -13,12 +13,16 @@ test("tool shell removes promotional navigation and footer links", () => {
 	assert.equal(shell.showFooterLinks, false);
 });
 
-test("home surface keeps only address and inbox workflows", () => {
+test("home surface keeps address, prefix, and inbox workflows", () => {
 	const sections = getHomeToolSections();
 
 	assert.equal(sections.showHero, false);
 	assert.equal(sections.showNarrative, false);
 	assert.equal(sections.showGuides, false);
-	assert.deepEqual(sections.panelOrder, ["address", "inbox"]);
-	assert.deepEqual(sections.desktopColumns, [4, 6]);
+	assert.deepEqual(sections.panelOrder, ["address", "prefix", "inbox"]);
+	assert.deepEqual(sections.desktopColumns, {
+		address: 3,
+		prefix: 3,
+		inbox: 6,
+	});
 });

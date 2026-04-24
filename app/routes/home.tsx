@@ -26,6 +26,10 @@ import {
 	normalizeEmailPrefix,
 } from "~/utils/mail";
 import { getMailboxVisibleSince } from "~/utils/mail-access";
+import {
+	isInboxRefreshing,
+	shouldRefreshInboxAfterAddressUpdate,
+} from "~/utils/inbox-refresh";
 import { MAIL_RETENTION_MS } from "~/utils/mail-retention";
 import { mergeRouteMeta } from "~/utils/meta";
 import {
@@ -413,15 +417,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const submittingIntent = fetcher.formData?.get("intent");
 	const shouldShowPrefixError =
 		Boolean(fetcher.data?.error) && fetcher.data?.customPrefix === customPrefix;
-	const isRefreshingInbox = revalidator.state !== "idle";
+	const isRefreshingInbox = isInboxRefreshing(activeAddress, revalidator.state);
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
 	const columnSpanClass = {
+		3: "xl:col-span-3",
 		4: "xl:col-span-4",
 		6: "xl:col-span-6",
-	} satisfies Record<4 | 6, string>;
-	const addressColumnClass = columnSpanClass[toolSections.desktopColumns[0]];
-	const inboxColumnClass = columnSpanClass[toolSections.desktopColumns[1]];
+	} satisfies Record<3 | 4 | 6, string>;
 	const expandedEmailPreviewStatus = expandedEmailId
 		? emailPreviewStatusById[expandedEmailId]
 		: undefined;
@@ -447,7 +450,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		}
 
 		setExpandedEmailId(null);
-		revalidator.revalidate();
+		if (shouldRefreshInboxAfterAddressUpdate(fetcher.data)) {
+			revalidator.revalidate();
+		}
 	}, [fetcher.data, fetcher.state, revalidator]);
 
 	useEffect(() => {
@@ -572,12 +577,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				type="application/ld+json"
 				dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
 			/>
-			<div className="grid w-full gap-4 xl:grid-cols-10">
+			<div className="grid w-full gap-4 xl:grid-cols-12">
 				{toolSections.panelOrder.map((panel) =>
 					panel === "address" ? (
 						<section
 							key={panel}
-							className={`tool-surface ${addressColumnClass} xl:self-start`}
+							className={`tool-surface ${columnSpanClass[toolSections.desktopColumns[panel]]} xl:self-start`}
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
@@ -651,91 +656,97 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									) : null}
 								</div>
 
-								<div className="tool-control-grid">
-									<div className="tool-generate-cell">
-										<button
-											type="button"
-											name="intent"
-											value="generate"
-											className="neo-button w-full justify-center sm:min-w-[9.5rem] sm:w-auto"
-											onClick={submitRandomAddress}
-											disabled={isSubmitting}
-										>
-											{submittingIntent === "generate" && isSubmitting
-												? copy.generating
-												: activeAddress
-													? copy.generateNew
-													: copy.generateAddress}
-										</button>
-									</div>
-
-									<div className="tool-prefix-shell">
-										<label className="tool-field-label" htmlFor="custom-prefix">
-											{copy.customPrefixLabel}
-										</label>
-										<div className="tool-prefix-composer">
-											<input
-												id="custom-prefix"
-												name="customPrefix"
-												type="text"
-												inputMode="text"
-												autoCapitalize="off"
-												autoComplete="off"
-												autoCorrect="off"
-												spellCheck={false}
-												className="tool-prefix-input"
-												placeholder={copy.customPrefixPlaceholder}
-												value={customPrefix}
-												onChange={(event) => {
-													setCustomPrefix(event.currentTarget.value);
-												}}
-												onKeyDown={(event) => {
-													if (event.key !== "Enter" || isSubmitting) {
-														return;
-													}
-
-													event.preventDefault();
-													submitCustomAddress();
-												}}
-											/>
-											<span className="tool-prefix-domain">
-												@{siteConfig.mailDomain}
-											</span>
-										</div>
-										<div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-											<p className="tool-field-hint !mt-0">
-												{copy.customPrefixHint}
-											</p>
-											<button
-												type="button"
-												className="neo-button-secondary w-full justify-center sm:w-auto"
-												onClick={submitCustomAddress}
-												disabled={isSubmitting || !customPrefix.trim()}
-											>
-												{submittingIntent === "generate" &&
-												isSubmitting &&
-												typeof fetcher.formData?.get("customPrefix") ===
-													"string" &&
-												fetcher.formData?.get("customPrefix")?.toString().trim()
-													? copy.generating
-													: copy.customPrefixAction}
-											</button>
-										</div>
-										{shouldShowPrefixError ? (
-											<p className="tool-field-error" role="alert">
-												{fetcher.data?.error}
-											</p>
-										) : null}
-									</div>
-								</div>
+								<button
+									type="button"
+									name="intent"
+									value="generate"
+									className="neo-button w-full justify-center"
+									onClick={submitRandomAddress}
+									disabled={isSubmitting}
+								>
+									{submittingIntent === "generate" && isSubmitting
+										? copy.generating
+										: activeAddress
+											? copy.generateNew
+											: copy.generateAddress}
+								</button>
 
 								<p className="tool-note">{copy.safetyHint}</p>
+							</div>
+						</section>
+					) : panel === "prefix" ? (
+						<section
+							key={panel}
+							className={`tool-surface ${columnSpanClass[toolSections.desktopColumns[panel]]} xl:self-start`}
+						>
+							<header className="tool-toolbar">
+								<div className="space-y-1">
+									<p className="tool-kicker">{siteConfig.mailDomain}</p>
+									<p className="tool-title">{copy.customPrefixLabel}</p>
+									<p className="tool-caption">{copy.customPrefixHint}</p>
+								</div>
+								<div className="tool-address-status">
+									<span className="tool-chip">@{siteConfig.mailDomain}</span>
+								</div>
+							</header>
+
+							<div className="tool-body">
+								<label className="sr-only" htmlFor="custom-prefix">
+									{copy.customPrefixLabel}
+								</label>
+								<div className="tool-prefix-composer !mt-0">
+									<input
+										id="custom-prefix"
+										name="customPrefix"
+										type="text"
+										inputMode="text"
+										autoCapitalize="off"
+										autoComplete="off"
+										autoCorrect="off"
+										spellCheck={false}
+										className="tool-prefix-input"
+										placeholder={copy.customPrefixPlaceholder}
+										value={customPrefix}
+										onChange={(event) => {
+											setCustomPrefix(event.currentTarget.value);
+										}}
+										onKeyDown={(event) => {
+											if (event.key !== "Enter" || isSubmitting) {
+												return;
+											}
+
+											event.preventDefault();
+											submitCustomAddress();
+										}}
+									/>
+									<span className="tool-prefix-domain">
+										@{siteConfig.mailDomain}
+									</span>
+								</div>
+								<button
+									type="button"
+									className="neo-button-secondary w-full justify-center"
+									onClick={submitCustomAddress}
+									disabled={isSubmitting || !customPrefix.trim()}
+								>
+									{submittingIntent === "generate" &&
+									isSubmitting &&
+									typeof fetcher.formData?.get("customPrefix") === "string" &&
+									fetcher.formData?.get("customPrefix")?.toString().trim()
+										? copy.generating
+										: copy.customPrefixAction}
+								</button>
+								{shouldShowPrefixError ? (
+									<p className="tool-field-error" role="alert">
+										{fetcher.data?.error}
+									</p>
+								) : null}
 							</div>
 						</section>
 					) : (
 						<section
 							key={panel}
-							className={`tool-surface min-w-0 ${inboxColumnClass}`}
+							className={`tool-surface min-w-0 ${columnSpanClass[toolSections.desktopColumns[panel]]}`}
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
