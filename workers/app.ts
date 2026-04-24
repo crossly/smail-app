@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import Parser from "postal-mime";
 import { createRequestHandler } from "react-router";
+import { cleanupExpiredEmails } from "../app/utils/mail-cleanup.ts";
 
 declare module "react-router" {
 	export interface AppLoadContext {
@@ -36,6 +37,7 @@ export default {
 
 		await env.R2.put(id, ab);
 	},
-	async scheduled() {
+	async scheduled(_controller, env, ctx) {
+		ctx.waitUntil(cleanupExpiredEmails(env));
 	},
 } satisfies ExportedHandler<Env>;

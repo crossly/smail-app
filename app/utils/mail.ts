@@ -4,6 +4,20 @@ import { DEFAULT_SITE_CONFIG } from "./site-config.ts";
 
 const nanoSuffix = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 6);
 const EMAIL_PREFIX_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const RESERVED_EMAIL_PREFIXES = new Set([
+	"abuse",
+	"admin",
+	"contact",
+	"hostmaster",
+	"mail",
+	"no-reply",
+	"noreply",
+	"postmaster",
+	"root",
+	"security",
+	"support",
+	"webmaster",
+]);
 
 export const EMAIL_PREFIX_MIN_LENGTH = 3;
 export const EMAIL_PREFIX_MAX_LENGTH = 32;
@@ -20,6 +34,10 @@ export function isValidEmailPrefix(prefix: string) {
 	);
 }
 
+export function isReservedEmailPrefix(prefix: string) {
+	return RESERVED_EMAIL_PREFIXES.has(normalizeEmailPrefix(prefix));
+}
+
 export function generateCustomEmailAddress(
 	prefix: string,
 	mailDomain = DEFAULT_SITE_CONFIG.mailDomain,
@@ -30,6 +48,10 @@ export function generateCustomEmailAddress(
 		throw new Error(
 			`Email prefixes must be ${EMAIL_PREFIX_MIN_LENGTH}-${EMAIL_PREFIX_MAX_LENGTH} characters and use only letters, numbers, or single hyphens.`,
 		);
+	}
+
+	if (isReservedEmailPrefix(normalizedPrefix)) {
+		throw new Error("This email prefix is reserved.");
 	}
 
 	return `${normalizedPrefix}@${mailDomain}`;

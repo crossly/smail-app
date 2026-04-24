@@ -31,3 +31,10 @@ test("generateCustomEmailAddress rejects invalid prefixes", () => {
 		/3-32 characters/,
 	);
 });
+
+test("generateCustomEmailAddress rejects reserved mailbox prefixes", () => {
+	assert.throws(
+		() => generateCustomEmailAddress("support", "mail.056650.xyz"),
+		/reserved/,
+	);
+});

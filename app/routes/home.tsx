@@ -25,6 +25,7 @@ import {
 	generateEmailAddress,
 	normalizeEmailPrefix,
 } from "~/utils/mail";
+import { getMailboxVisibleSince } from "~/utils/mail-access";
 import { MAIL_RETENTION_MS } from "~/utils/mail-retention";
 import { mergeRouteMeta } from "~/utils/meta";
 import {
@@ -224,12 +225,16 @@ function formatTime(
 	});
 }
 
-async function getEmails(d1: D1Database, toAddress: string) {
+async function getEmails(
+	d1: D1Database,
+	toAddress: string,
+	visibleSince: number,
+) {
 	const { results } = await d1
 		.prepare(
-			"SELECT * FROM emails WHERE to_address = ? ORDER BY time DESC LIMIT 100",
+			"SELECT * FROM emails WHERE to_address = ? AND time >= ? ORDER BY time DESC LIMIT 100",
 		)
-		.bind(toAddress)
+		.bind(toAddress, visibleSince)
 		.all();
 	return results as Email[];
 }
@@ -257,7 +262,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 	const cookieHeader = request.headers.get("Cookie");
 	const session = await getSession(cookieHeader);
 	let addresses = (session.get("addresses") || []) as string[];
-	const addressIssuedAt = session.get("addressIssuedAt");
+	let addressIssuedAt = session.get("addressIssuedAt");
 	const now = Date.now();
 	let shouldCommitSession = false;
 	const siteConfig = createSiteConfig({
@@ -267,17 +272,20 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 	if (addresses.length > 0 && isAddressExpired(addressIssuedAt, now)) {
 		addresses = [generateEmailAddress(siteConfig.mailDomain)];
+		addressIssuedAt = now;
 		session.set("addresses", addresses);
-		session.set("addressIssuedAt", now);
+		session.set("addressIssuedAt", addressIssuedAt);
 		shouldCommitSession = true;
 	} else if (addresses.length > 0 && !addressIssuedAt) {
-		session.set("addressIssuedAt", now);
+		addressIssuedAt = now;
+		session.set("addressIssuedAt", addressIssuedAt);
 		shouldCommitSession = true;
 	}
 
+	const visibleSince = getMailboxVisibleSince(addressIssuedAt, now);
 	const emails =
-		addresses.length > 0
-			? await getEmails(context.cloudflare.env.D1, addresses[0]!)
+		addresses.length > 0 && visibleSince !== null
+			? await getEmails(context.cloudflare.env.D1, addresses[0]!, visibleSince)
 			: [];
 
 	if (shouldCommitSession) {
@@ -573,136 +581,152 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
-									<p className="tool-kicker">{copy.currentAddress}</p>
-									<p className="tool-title">
-										{activeAddress ?? copy.noAddressTitle}
-									</p>
-									<p className="tool-caption">{siteConfig.mailDomain}</p>
+									<p className="tool-kicker">{siteConfig.mailDomain}</p>
+									<p className="tool-title">{copy.currentAddress}</p>
+								</div>
+								<div className="tool-address-status">
+									<span className="tool-chip">{siteConfig.mailDomain}</span>
+									<span className="tool-chip">24h</span>
 								</div>
 							</header>
 
 							<div className="tool-body">
-								{activeAddress ? (
-									<div className="tool-address-shell">
-										<div className="tool-address">{activeAddress}</div>
-										<button
-											type="button"
-											className="neo-button-secondary w-full sm:w-auto sm:min-w-20"
-											onClick={async () => {
-												if (
-													typeof navigator !== "undefined" &&
-													navigator.clipboard
-												) {
-													try {
-														await navigator.clipboard.writeText(activeAddress);
-														setCopied(true);
-														setTimeout(() => setCopied(false), 1500);
-													} catch {
-														// ignore clipboard errors
+								<div
+									className="tool-address-console"
+									data-empty={activeAddress ? "false" : "true"}
+								>
+									<div className="tool-address-meta">
+										<p className="tool-field-label">{siteConfig.mailDomain}</p>
+										{activeAddress ? (
+											<div className="tool-address">{activeAddress}</div>
+										) : (
+											<>
+												<p className="tool-empty-title">{copy.noAddressTitle}</p>
+												<p className="tool-empty-copy">
+													{copy.noAddressDescription}
+												</p>
+											</>
+										)}
+									</div>
+									{activeAddress ? (
+										<div className="tool-address-actions">
+											<button
+												type="button"
+												className="neo-button-secondary w-full sm:w-auto"
+												onClick={async () => {
+													if (
+														typeof navigator !== "undefined" &&
+														navigator.clipboard
+													) {
+														try {
+															await navigator.clipboard.writeText(activeAddress);
+															setCopied(true);
+															setTimeout(() => setCopied(false), 1500);
+														} catch {
+															// ignore clipboard errors
+														}
 													}
-												}
-											}}
-										>
-											{copied ? copy.copied : copy.copy}
-										</button>
-									</div>
-								) : (
-									<div className="tool-empty-state">
-										<p className="tool-empty-title">{copy.noAddressTitle}</p>
-										<p className="tool-empty-copy">
-											{copy.noAddressDescription}
-										</p>
-									</div>
-								)}
-
-								<div className="tool-prefix-shell">
-									<label className="tool-field-label" htmlFor="custom-prefix">
-										{copy.customPrefixLabel}
-									</label>
-									<div className="tool-prefix-composer">
-										<input
-											id="custom-prefix"
-											name="customPrefix"
-											type="text"
-											inputMode="text"
-											autoCapitalize="off"
-											autoComplete="off"
-											autoCorrect="off"
-											spellCheck={false}
-											className="tool-prefix-input"
-											placeholder={copy.customPrefixPlaceholder}
-											value={customPrefix}
-											onChange={(event) => {
-												setCustomPrefix(event.currentTarget.value);
-											}}
-											onKeyDown={(event) => {
-												if (event.key !== "Enter" || isSubmitting) {
-													return;
-												}
-
-												event.preventDefault();
-												submitCustomAddress();
-											}}
-										/>
-										<span className="tool-prefix-domain">
-											@{siteConfig.mailDomain}
-										</span>
-									</div>
-									<p className="tool-field-hint">{copy.customPrefixHint}</p>
-									{shouldShowPrefixError ? (
-										<p className="tool-field-error" role="alert">
-											{fetcher.data?.error}
-										</p>
+												}}
+											>
+												{copied ? copy.copied : copy.copy}
+											</button>
+											<button
+												type="button"
+												name="intent"
+												value="delete"
+												className="neo-button-secondary w-full sm:w-auto"
+												onClick={() => {
+													fetcher.submit(
+														{ intent: "delete" },
+														{ method: "post" },
+													);
+												}}
+												disabled={isSubmitting}
+											>
+												{submittingIntent === "delete" && isSubmitting
+													? copy.deleting
+													: copy.deleteAddress}
+											</button>
+										</div>
 									) : null}
 								</div>
 
-								<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-									<button
-										type="button"
-										name="intent"
-										value="generate"
-										className="neo-button w-full justify-center sm:min-w-[10.5rem] sm:w-auto"
-										onClick={submitRandomAddress}
-										disabled={isSubmitting}
-									>
-										{submittingIntent === "generate" && isSubmitting
-											? copy.generating
-											: activeAddress
-												? copy.generateNew
-												: copy.generateAddress}
-									</button>
-									<button
-										type="button"
-										className="neo-button-secondary w-full justify-center sm:w-auto"
-										onClick={submitCustomAddress}
-										disabled={isSubmitting || !customPrefix.trim()}
-									>
-										{submittingIntent === "generate" &&
-										isSubmitting &&
-										typeof fetcher.formData?.get("customPrefix") === "string" &&
-										fetcher.formData?.get("customPrefix")?.toString().trim()
-											? copy.generating
-											: copy.customPrefixAction}
-									</button>
-									{activeAddress ? (
+								<div className="tool-control-grid">
+									<div className="tool-generate-cell">
 										<button
 											type="button"
 											name="intent"
-											value="delete"
-											className="neo-button-secondary w-full justify-center sm:w-auto"
-											onClick={() => {
-												fetcher.submit(
-													{ intent: "delete" },
-													{ method: "post" },
-												);
-											}}
+											value="generate"
+											className="neo-button w-full justify-center sm:min-w-[9.5rem] sm:w-auto"
+											onClick={submitRandomAddress}
 											disabled={isSubmitting}
 										>
-											{submittingIntent === "delete" && isSubmitting
-												? copy.deleting
-												: copy.deleteAddress}
+											{submittingIntent === "generate" && isSubmitting
+												? copy.generating
+												: activeAddress
+													? copy.generateNew
+													: copy.generateAddress}
 										</button>
-									) : null}
+									</div>
+
+									<div className="tool-prefix-shell">
+										<label className="tool-field-label" htmlFor="custom-prefix">
+											{copy.customPrefixLabel}
+										</label>
+										<div className="tool-prefix-composer">
+											<input
+												id="custom-prefix"
+												name="customPrefix"
+												type="text"
+												inputMode="text"
+												autoCapitalize="off"
+												autoComplete="off"
+												autoCorrect="off"
+												spellCheck={false}
+												className="tool-prefix-input"
+												placeholder={copy.customPrefixPlaceholder}
+												value={customPrefix}
+												onChange={(event) => {
+													setCustomPrefix(event.currentTarget.value);
+												}}
+												onKeyDown={(event) => {
+													if (event.key !== "Enter" || isSubmitting) {
+														return;
+													}
+
+													event.preventDefault();
+													submitCustomAddress();
+												}}
+											/>
+											<span className="tool-prefix-domain">
+												@{siteConfig.mailDomain}
+											</span>
+										</div>
+										<div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+											<p className="tool-field-hint !mt-0">
+												{copy.customPrefixHint}
+											</p>
+											<button
+												type="button"
+												className="neo-button-secondary w-full justify-center sm:w-auto"
+												onClick={submitCustomAddress}
+												disabled={isSubmitting || !customPrefix.trim()}
+											>
+												{submittingIntent === "generate" &&
+												isSubmitting &&
+												typeof fetcher.formData?.get("customPrefix") ===
+													"string" &&
+												fetcher.formData?.get("customPrefix")?.toString().trim()
+													? copy.generating
+													: copy.customPrefixAction}
+											</button>
+										</div>
+										{shouldShowPrefixError ? (
+											<p className="tool-field-error" role="alert">
+												{fetcher.data?.error}
+											</p>
+										) : null}
+									</div>
 								</div>
 
 								<p className="tool-note">{copy.safetyHint}</p>

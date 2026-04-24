@@ -1,5 +1,4 @@
 import {
-	Navigate,
 	isRouteErrorResponse,
 	Links,
 	Meta,
@@ -27,6 +26,7 @@ import {
 	isMarkdownLocaleIndexable,
 	MARKDOWN_INDEXABLE_LOCALES,
 } from "~/seo.config";
+import { getRouteErrorContent } from "~/utils/error-boundary";
 import {
 	DEFAULT_SITE_CONFIG,
 	createSiteConfig,
@@ -170,31 +170,28 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 	const location = useLocation();
 	const locale = getLocaleFromPathname(location.pathname);
 	const homePath = toLocalePath("/", locale);
-	const isNotFound = isRouteErrorResponse(error) && error.status === 404;
-
-	if (isNotFound) {
-		return <Navigate to={homePath} replace />;
-	}
-
-	let message = "Oops!";
-	let details = "An unexpected error occurred.";
+	const routeError = isRouteErrorResponse(error)
+		? {
+				status: error.status,
+				statusText: error.statusText,
+			}
+		: null;
+	const { message, details } = getRouteErrorContent(routeError);
 	let stack: string | undefined;
 
-	if (isRouteErrorResponse(error)) {
-		message = error.status === 404 ? "404" : "Error";
-		details =
-			error.status === 404
-				? "The requested page could not be found."
-				: error.statusText || details;
-	} else if (import.meta.env.DEV && error && error instanceof Error) {
-		details = error.message;
+	let resolvedDetails = details;
+	if (!routeError && import.meta.env.DEV && error && error instanceof Error) {
+		resolvedDetails = error.message;
 		stack = error.stack;
 	}
 
 	return (
 		<main className="pt-16 p-4 container mx-auto">
 			<h1>{message}</h1>
-			<p>{details}</p>
+			<p>{resolvedDetails}</p>
+			<p>
+				<a href={homePath}>Back to homepage</a>
+			</p>
 			{stack && (
 				<pre className="w-full p-4 overflow-x-auto">
 					<code>{stack}</code>

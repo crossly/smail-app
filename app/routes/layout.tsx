@@ -134,7 +134,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 									alt={`${siteConfig.siteName} logo`}
 									className="size-[20px]"
 								/>
-								<span className="absolute -inset-px -z-10 rounded-xl bg-blue-500/25 blur-sm transition group-hover:bg-cyan-400/35" />
 							</span>
 							<div className="space-y-0.5">
 								<span className="font-display block text-base font-bold tracking-tight text-theme-primary">
