@@ -29,3 +29,17 @@ test("renderEmailBody strips active content from HTML email bodies", () => {
 	assert.doesNotMatch(body, /img-src http: https:/i);
 	assert.match(body, /<p>Hi<a>open<\/a><img><img src="cid:local-image"><\/p>/);
 });
+
+test("renderEmailBody strips high risk document and embed tags from HTML email bodies", () => {
+	const body = renderEmailBody({
+		html: '<meta http-equiv="refresh" content="0;url=https://example.test"><base href="https://example.test"><form action="https://example.test"><button>Send</button></form><iframe srcdoc="<script>alert(1)</script>"></iframe><object data="https://example.test/file"></object><p>Safe</p>',
+		text: "",
+	});
+
+	assert.doesNotMatch(body, /<meta http-equiv="refresh"/i);
+	assert.doesNotMatch(body, /<base href=/i);
+	assert.doesNotMatch(body, /<form/i);
+	assert.doesNotMatch(body, /<iframe/i);
+	assert.doesNotMatch(body, /<object/i);
+	assert.match(body, /<p>Safe<\/p>/);
+});

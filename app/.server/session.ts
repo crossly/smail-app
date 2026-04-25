@@ -4,6 +4,7 @@ import { MAIL_RETENTION_HOURS } from "~/utils/mail-retention";
 type SessionData = {
 	addresses: string[];
 	addressIssuedAt?: number;
+	reservationOwnerToken?: string;
 };
 
 let sessionStorage: ReturnType<

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { nanoid } from "nanoid";
 import {
 	data,
 	redirect,
@@ -27,6 +28,7 @@ import {
 	normalizeEmailPrefix,
 } from "~/utils/mail";
 import { getMailboxVisibleSince, isAddressExpired } from "~/utils/mail-access";
+import { reserveEmailAddress } from "~/utils/mail-reservations";
 import {
 	isInboxRefreshing,
 	shouldRefreshInboxAfterAddressUpdate,
@@ -175,7 +177,7 @@ function EmailInlinePreviewPanel({
 						title={`${copy.title}: ${email.subject}`}
 						className="email-preview-frame"
 						style={{ height: `${frameHeight}px` }}
-						sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+						sandbox="allow-popups allow-same-origin"
 						referrerPolicy="no-referrer"
 						onLoad={(event) => onFrameLoad(event.currentTarget)}
 					/>
@@ -270,6 +272,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		addressIssuedAt = now;
 		session.set("addresses", addresses);
 		session.set("addressIssuedAt", addressIssuedAt);
+		session.unset("reservationOwnerToken");
 		shouldCommitSession = true;
 	} else if (addresses.length > 0 && !addressIssuedAt) {
 		addressIssuedAt = now;
@@ -331,11 +334,26 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 			if (customPrefix) {
 				try {
-					addresses = [
-						generateCustomEmailAddress(customPrefix, siteConfig.mailDomain),
-					];
+					const customAddress = generateCustomEmailAddress(
+						customPrefix,
+						siteConfig.mailDomain,
+					);
+					const existingOwnerToken = session.get("reservationOwnerToken");
+					const ownerToken =
+						typeof existingOwnerToken === "string" ? existingOwnerToken : nanoid();
+					const reserved = await reserveEmailAddress(context.cloudflare.env, {
+						address: customAddress,
+						ownerToken,
+					});
+					if (!reserved) {
+						error = copy.customPrefixError;
+						break;
+					}
+
+					addresses = [customAddress];
 					session.set("addresses", addresses);
 					session.set("addressIssuedAt", Date.now());
+					session.set("reservationOwnerToken", ownerToken);
 					didUpdateAddress = true;
 				} catch {
 					error = copy.customPrefixError;
@@ -344,6 +362,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 				addresses = [generateEmailAddress(siteConfig.mailDomain)];
 				session.set("addresses", addresses);
 				session.set("addressIssuedAt", Date.now());
+				session.unset("reservationOwnerToken");
 				didUpdateAddress = true;
 			}
 			break;
@@ -353,6 +372,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			customPrefix = "";
 			session.set("addresses", addresses);
 			session.unset("addressIssuedAt");
+			session.unset("reservationOwnerToken");
 			didUpdateAddress = true;
 			break;
 		}

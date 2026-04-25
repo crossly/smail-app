@@ -36,7 +36,8 @@
 	"r2_buckets": [
 		{
 			"binding": "R2",
-			"bucket_name": "smailv3","preview_bucket_name": "smailv3"
+			"bucket_name": "smailv3",
+			"preview_bucket_name": "smailv3-preview"
 		}
 	]
 }

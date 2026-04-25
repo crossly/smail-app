@@ -16,7 +16,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		env: context.cloudflare.env,
 		requestUrl: request.url,
 	});
-	const lastmod = new Date().toISOString();
 	const seen = new Set<string>();
 	const allPaths: string[] = [];
 
@@ -75,7 +74,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 		`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
 		allPaths
 			.map((path) => {
-				return `\n  <url>\n    <loc>${siteConfig.siteUrl}${path}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`;
+				return `\n  <url>\n    <loc>${siteConfig.siteUrl}${path}</loc>\n  </url>`;
 			})
 			.join("") +
 		"\n</urlset>\n";

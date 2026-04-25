@@ -1,4 +1,5 @@
 import { getRetentionCutoff } from "./mail-retention.ts";
+import { cleanupExpiredEmailReservations } from "./mail-reservations.ts";
 
 export const MAIL_CLEANUP_BATCH_SIZE = 250;
 
@@ -17,6 +18,8 @@ export async function cleanupExpiredEmails(
 	const batchSize = options?.batchSize ?? MAIL_CLEANUP_BATCH_SIZE;
 	const cutoff = getRetentionCutoff(now);
 	let deleted = 0;
+
+	await cleanupExpiredEmailReservations(env, now);
 
 	while (true) {
 		const { results } = await env.D1.prepare(
