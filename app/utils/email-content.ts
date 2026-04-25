@@ -19,9 +19,15 @@ function renderPlainText(value: string): string {
 function sanitizeHtml(value: string): string {
 	return value
 		.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+		.replace(/<link\b[^>]*>/gi, "")
 		.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+		.replace(/\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+		.replace(/\s+(srcset|poster|background)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
 		.replace(/\s+(href|src)\s*=\s*(["'])\s*javascript:[\s\S]*?\2/gi, "")
-		.replace(/\s+(href|src)\s*=\s*javascript:[^\s>]+/gi, "");
+		.replace(/\s+(href|src)\s*=\s*javascript:[^\s>]+/gi, "")
+		.replace(/\s+src\s*=\s*(["'])(?!\s*(?:cid:|data:))[\s\S]*?\1/gi, "")
+		.replace(/\s+src\s*=\s*(?!["']?\s*(?:cid:|data:))[^\s>]+/gi, "");
 }
 
 export function wrapEmailContent(content: string): string {
@@ -30,7 +36,7 @@ export function wrapEmailContent(content: string): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data: cid:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:; media-src 'none'; object-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

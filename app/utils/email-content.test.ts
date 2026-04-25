@@ -14,13 +14,18 @@ test("renderEmailBody escapes plain text before wrapping it as HTML", () => {
 
 test("renderEmailBody strips active content from HTML email bodies", () => {
 	const body = renderEmailBody({
-		html: '<p onclick="alert(1)">Hi<script>alert(1)</script><a href="javascript:alert(1)">open</a><img src="https://example.test/pixel" onerror="alert(1)"></p>',
+		html: '<style>.hero{background:url("https://tracker.test/bg.png")}</style><p onclick="alert(1)" style="background-image:url(https://tracker.test/inline.png)">Hi<script>alert(1)</script><a href="javascript:alert(1)">open</a><img src="https://example.test/pixel" srcset="https://tracker.test/a.png 1x, https://tracker.test/b.png 2x" onerror="alert(1)"><img src="cid:local-image"></p>',
 		text: "",
 	});
 
 	assert.doesNotMatch(body, /<script/i);
 	assert.doesNotMatch(body, /onclick=/i);
 	assert.doesNotMatch(body, /onerror=/i);
+	assert.doesNotMatch(body, /style=/i);
+	assert.doesNotMatch(body, /srcset=/i);
 	assert.doesNotMatch(body, /javascript:/i);
-	assert.match(body, /<p>Hi<a>open<\/a><img src="https:\/\/example\.test\/pixel"><\/p>/);
+	assert.doesNotMatch(body, /https:\/\/example\.test\/pixel/i);
+	assert.doesNotMatch(body, /https:\/\/tracker\.test/i);
+	assert.doesNotMatch(body, /img-src http: https:/i);
+	assert.match(body, /<p>Hi<a>open<\/a><img><img src="cid:local-image"><\/p>/);
 });

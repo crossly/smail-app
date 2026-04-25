@@ -2,7 +2,10 @@ import Parser from "postal-mime";
 import { getSession } from "~/.server/session";
 import type { EmailDetail } from "~/types/email";
 import { renderEmailBody } from "~/utils/email-content";
-import { getMailboxVisibleSince } from "~/utils/mail-access";
+import {
+	getMailboxVisibleSince,
+	isAddressExpired,
+} from "~/utils/mail-access";
 import type { Route } from "./+types/api.email";
 
 export async function loader({ request, params, context }: Route.LoaderArgs) {
@@ -17,8 +20,13 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
 		(address): address is string => typeof address === "string",
 	);
 	const addressIssuedAt = session.get("addressIssuedAt");
-	const visibleSince = getMailboxVisibleSince(addressIssuedAt);
-	if (addresses.length === 0 || visibleSince === null) {
+	const now = Date.now();
+	const visibleSince = getMailboxVisibleSince(addressIssuedAt, now);
+	if (
+		addresses.length === 0 ||
+		visibleSince === null ||
+		isAddressExpired(addressIssuedAt, now)
+	) {
 		throw new Response("Unauthorized", { status: 403 });
 	}
 

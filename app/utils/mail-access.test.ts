@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
 	getMailboxVisibleSince,
+	isAddressExpired,
 	isEmailVisibleForIssuedAddress,
 } from "./mail-access.ts";
 import { MAIL_RETENTION_MS } from "./mail-retention.ts";
@@ -32,4 +33,13 @@ test("isEmailVisibleForIssuedAddress rejects mail before issue time or retention
 		isEmailVisibleForIssuedAddress(now - MAIL_RETENTION_MS - 1, issuedAt, now),
 		false,
 	);
+});
+
+test("isAddressExpired only expires issued addresses after the retention window", () => {
+	const now = 1_700_000_000_000;
+
+	assert.equal(isAddressExpired(undefined, now), false);
+	assert.equal(isAddressExpired(now - 60_000, now), false);
+	assert.equal(isAddressExpired(now - MAIL_RETENTION_MS, now), true);
+	assert.equal(isAddressExpired(now - MAIL_RETENTION_MS - 1, now), true);
 });

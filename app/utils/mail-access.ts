@@ -1,4 +1,16 @@
+import { MAIL_RETENTION_MS } from "./mail-retention.ts";
 import { getRetentionCutoff } from "./mail-retention.ts";
+
+export function isAddressExpired(
+	addressIssuedAt: number | undefined,
+	now = Date.now(),
+): boolean {
+	if (typeof addressIssuedAt !== "number" || !Number.isFinite(addressIssuedAt)) {
+		return false;
+	}
+
+	return now - addressIssuedAt >= MAIL_RETENTION_MS;
+}
 
 export function getMailboxVisibleSince(
 	addressIssuedAt: number | undefined,

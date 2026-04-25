@@ -16,23 +16,30 @@ export async function cleanupExpiredEmails(
 	const now = options?.now ?? Date.now();
 	const batchSize = options?.batchSize ?? MAIL_CLEANUP_BATCH_SIZE;
 	const cutoff = getRetentionCutoff(now);
-	const { results } = await env.D1.prepare(
-		"SELECT id FROM emails WHERE time < ? ORDER BY time ASC LIMIT ?",
-	)
-		.bind(cutoff, batchSize)
-		.all<ExpiredEmailRow>();
-	const ids = results.map((row) => row.id).filter(Boolean);
+	let deleted = 0;
 
-	if (ids.length === 0) {
-		return { deleted: 0, cutoff };
+	while (true) {
+		const { results } = await env.D1.prepare(
+			"SELECT id FROM emails WHERE time < ? ORDER BY time ASC LIMIT ?",
+		)
+			.bind(cutoff, batchSize)
+			.all<ExpiredEmailRow>();
+		const ids = results.map((row) => row.id).filter(Boolean);
+
+		if (ids.length === 0) {
+			return { deleted, cutoff };
+		}
+
+		await Promise.all(ids.map((id) => env.R2.delete(id)));
+
+		const placeholders = ids.map(() => "?").join(", ");
+		await env.D1.prepare(`DELETE FROM emails WHERE id IN (${placeholders})`)
+			.bind(...ids)
+			.run();
+
+		deleted += ids.length;
+		if (ids.length < batchSize) {
+			return { deleted, cutoff };
+		}
 	}
-
-	await Promise.all(ids.map((id) => env.R2.delete(id)));
-
-	const placeholders = ids.map(() => "?").join(", ");
-	await env.D1.prepare(`DELETE FROM emails WHERE id IN (${placeholders})`)
-		.bind(...ids)
-		.run();
-
-	return { deleted: ids.length, cutoff };
 }

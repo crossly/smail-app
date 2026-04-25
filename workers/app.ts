@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import Parser from "postal-mime";
 import { createRequestHandler } from "react-router";
+import { persistIncomingEmail } from "../app/utils/email-ingest.ts";
 import { cleanupExpiredEmails } from "../app/utils/mail-cleanup.ts";
 
 declare module "react-router" {
@@ -28,14 +29,15 @@ export default {
 		const ab = await new Response(msg.raw).arrayBuffer();
 		const parsed = await parser.parse(ab);
 		const id = nanoid();
-
-		await env.D1.prepare(
-			"INSERT INTO emails (id, to_address, from_name, from_address, subject, time) VALUES (?, ?, ?, ?, ?, ?)",
-		)
-			.bind(id, msg.to, parsed.from?.name, parsed.from?.address, parsed.subject, Date.now())
-			.run();
-
-		await env.R2.put(id, ab);
+		await persistIncomingEmail(env, {
+			id,
+			raw: ab,
+			toAddress: msg.to,
+			fromName: parsed.from?.name,
+			fromAddress: parsed.from?.address,
+			subject: parsed.subject,
+			time: Date.now(),
+		});
 	},
 	async scheduled(_controller, env, ctx) {
 		ctx.waitUntil(cleanupExpiredEmails(env));

@@ -26,7 +26,7 @@ import {
 	generateEmailAddress,
 	normalizeEmailPrefix,
 } from "~/utils/mail";
-import { getMailboxVisibleSince } from "~/utils/mail-access";
+import { getMailboxVisibleSince, isAddressExpired } from "~/utils/mail-access";
 import {
 	isInboxRefreshing,
 	shouldRefreshInboxAfterAddressUpdate,
@@ -130,16 +130,6 @@ export function meta({ params, matches }: Route.MetaArgs) {
 			content: "index, follow",
 		},
 	]);
-}
-
-function isAddressExpired(
-	addressIssuedAt: number | undefined,
-	now = Date.now(),
-): boolean {
-	if (!addressIssuedAt) {
-		return false;
-	}
-	return now - addressIssuedAt >= MAIL_RETENTION_MS;
 }
 
 function EmailInlinePreviewPanel({
