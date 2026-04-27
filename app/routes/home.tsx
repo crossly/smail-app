@@ -33,7 +33,9 @@ import {
 	reserveEmailAddress,
 } from "~/utils/mail-reservations";
 import {
+	INBOX_REFRESH_LABEL_DELAY_MS,
 	isInboxRefreshing,
+	shouldShowRefreshingInboxLabel,
 	shouldRefreshInboxAfterAddressUpdate,
 } from "~/utils/inbox-refresh";
 import { MAIL_RETENTION_MS } from "~/utils/mail-retention";
@@ -453,6 +455,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const [lastInboxRefreshAt, setLastInboxRefreshAt] = useState(() =>
 		loaderData.renderedAt,
 	);
+	const [hasInboxRefreshLabelDelayElapsed, setHasInboxRefreshLabelDelayElapsed] =
+		useState(false);
 	const locale = loaderData.locale || DEFAULT_LOCALE;
 	const copy = getDictionary(locale, siteConfig).home;
 	const homeJsonLd = getHomeJsonLd(locale, siteConfig);
@@ -464,6 +468,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const shouldShowPrefixError =
 		Boolean(fetcher.data?.error) && fetcher.data?.customPrefix === customPrefix;
 	const isRefreshingInbox = isInboxRefreshing(activeAddress, revalidator.state);
+	const shouldShowRefreshingLabel = shouldShowRefreshingInboxLabel(
+		activeAddress,
+		revalidator.state,
+		hasInboxRefreshLabelDelayElapsed,
+	);
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
 	const columnSpanClass = {
@@ -515,6 +524,22 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			setExpandedEmailId(null);
 		}
 	}, [emails, expandedEmailId]);
+
+	useEffect(() => {
+		if (!isRefreshingInbox) {
+			setHasInboxRefreshLabelDelayElapsed(false);
+			return;
+		}
+
+		setHasInboxRefreshLabelDelayElapsed(false);
+		const timeoutId = window.setTimeout(() => {
+			setHasInboxRefreshLabelDelayElapsed(true);
+		}, INBOX_REFRESH_LABEL_DELAY_MS);
+
+		return () => {
+			window.clearTimeout(timeoutId);
+		};
+	}, [isRefreshingInbox]);
 
 	useEffect(() => {
 		if (
@@ -798,7 +823,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 										}}
 										disabled={isRefreshingInbox || !activeAddress}
 									>
-										{isRefreshingInbox
+										{shouldShowRefreshingLabel
 											? copy.refreshingInbox
 											: copy.refreshInbox}
 									</button>

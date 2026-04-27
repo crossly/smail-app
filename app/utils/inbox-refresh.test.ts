@@ -64,3 +64,41 @@ test("shows the inbox as refreshing only while an address is active", async () =
 		false,
 	);
 });
+
+test("delays the refreshing label long enough to avoid flicker on short refreshes", async () => {
+	const { INBOX_REFRESH_LABEL_DELAY_MS, shouldShowRefreshingInboxLabel } =
+		await import("./inbox-refresh.ts").catch(() => ({
+			INBOX_REFRESH_LABEL_DELAY_MS: undefined,
+			shouldShowRefreshingInboxLabel: undefined,
+		}));
+
+	assert.equal(
+		shouldShowRefreshingInboxLabel?.(
+			"fresh-box@mail.056650.xyz",
+			"loading",
+			false,
+		),
+		false,
+	);
+	assert.equal(
+		shouldShowRefreshingInboxLabel?.(
+			"fresh-box@mail.056650.xyz",
+			"loading",
+			true,
+		),
+		true,
+	);
+	assert.equal(
+		shouldShowRefreshingInboxLabel?.(null, "loading", true),
+		false,
+	);
+	assert.equal(
+		shouldShowRefreshingInboxLabel?.(
+			"fresh-box@mail.056650.xyz",
+			"idle",
+			true,
+		),
+		false,
+	);
+	assert.equal(INBOX_REFRESH_LABEL_DELAY_MS, 150);
+});
