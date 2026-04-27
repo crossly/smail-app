@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import {
 	data,
@@ -34,7 +34,9 @@ import {
 } from "~/utils/mail-reservations";
 import {
 	INBOX_REFRESH_LABEL_DELAY_MS,
-	isInboxRefreshing,
+	getRemainingInboxRefreshLabelTime,
+	type InboxRefreshUiPhase,
+	shouldLockInboxRefreshButton,
 	shouldShowRefreshingInboxLabel,
 	shouldRefreshInboxAfterAddressUpdate,
 } from "~/utils/inbox-refresh";
@@ -263,6 +265,20 @@ type HomeActionData = {
 	error?: string;
 };
 
+const INBOX_REFRESH_VISIBILITY_SETTLE_MS = 32;
+
+type ManualInboxRefreshState = {
+	phase: InboxRefreshUiPhase;
+	visibleAt: number | null;
+};
+
+function createIdleManualInboxRefreshState(): ManualInboxRefreshState {
+	return {
+		phase: "idle",
+		visibleAt: null,
+	};
+}
+
 export async function loader({ request, context, params }: Route.LoaderArgs) {
 	const { locale, shouldRedirectToDefault, isInvalid } = resolveLocaleParam(
 		params.lang,
@@ -455,8 +471,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const [lastInboxRefreshAt, setLastInboxRefreshAt] = useState(() =>
 		loaderData.renderedAt,
 	);
-	const [hasInboxRefreshLabelDelayElapsed, setHasInboxRefreshLabelDelayElapsed] =
-		useState(false);
+	const [manualInboxRefresh, setManualInboxRefresh] =
+		useState<ManualInboxRefreshState>(createIdleManualInboxRefreshState);
+	const refreshLabelDelayTimeoutRef = useRef<number | null>(null);
+	const refreshLabelSettleTimeoutRef = useRef<number | null>(null);
+	const refreshLabelHideTimeoutRef = useRef<number | null>(null);
+	const previousRevalidatorStateRef = useRef(revalidator.state);
+	const latestRevalidatorStateRef = useRef(revalidator.state);
+	latestRevalidatorStateRef.current = revalidator.state;
 	const locale = loaderData.locale || DEFAULT_LOCALE;
 	const copy = getDictionary(locale, siteConfig).home;
 	const homeJsonLd = getHomeJsonLd(locale, siteConfig);
@@ -467,11 +489,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const submittingIntent = fetcher.formData?.get("intent");
 	const shouldShowPrefixError =
 		Boolean(fetcher.data?.error) && fetcher.data?.customPrefix === customPrefix;
-	const isRefreshingInbox = isInboxRefreshing(activeAddress, revalidator.state);
+	const shouldLockRefreshButton = shouldLockInboxRefreshButton(
+		activeAddress,
+		manualInboxRefresh.phase,
+	);
 	const shouldShowRefreshingLabel = shouldShowRefreshingInboxLabel(
 		activeAddress,
-		revalidator.state,
-		hasInboxRefreshLabelDelayElapsed,
+		manualInboxRefresh.phase,
 	);
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
@@ -491,10 +515,45 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const expandedEmailBody = expandedEmailId
 		? emailDetailsById[expandedEmailId]?.body
 		: undefined;
+	const clearRefreshLabelDelayTimeout = () => {
+		if (refreshLabelDelayTimeoutRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(refreshLabelDelayTimeoutRef.current);
+		refreshLabelDelayTimeoutRef.current = null;
+	};
+	const clearRefreshLabelSettleTimeout = () => {
+		if (refreshLabelSettleTimeoutRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(refreshLabelSettleTimeoutRef.current);
+		refreshLabelSettleTimeoutRef.current = null;
+	};
+	const clearRefreshLabelHideTimeout = () => {
+		if (refreshLabelHideTimeoutRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(refreshLabelHideTimeoutRef.current);
+		refreshLabelHideTimeoutRef.current = null;
+	};
+	const clearManualInboxRefreshTimers = () => {
+		clearRefreshLabelDelayTimeout();
+		clearRefreshLabelSettleTimeout();
+		clearRefreshLabelHideTimeout();
+	};
 
 	useEffect(() => {
 		setLastInboxRefreshAt(loaderData.renderedAt);
 	}, [loaderData.renderedAt]);
+
+	useEffect(() => {
+		return () => {
+			clearManualInboxRefreshTimers();
+		};
+	}, []);
 
 	useEffect(() => {
 		if (fetcher.state !== "idle" || !fetcher.data) {
@@ -526,20 +585,108 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	}, [emails, expandedEmailId]);
 
 	useEffect(() => {
-		if (!isRefreshingInbox) {
-			setHasInboxRefreshLabelDelayElapsed(false);
+		if (activeAddress) {
 			return;
 		}
 
-		setHasInboxRefreshLabelDelayElapsed(false);
-		const timeoutId = window.setTimeout(() => {
-			setHasInboxRefreshLabelDelayElapsed(true);
+		clearManualInboxRefreshTimers();
+		setManualInboxRefresh((current) =>
+			current.phase === "idle" && current.visibleAt === null
+				? current
+				: createIdleManualInboxRefreshState(),
+		);
+	}, [activeAddress]);
+
+	useEffect(() => {
+		const previousRevalidatorState = previousRevalidatorStateRef.current;
+		const didStartLoading =
+			previousRevalidatorState === "idle" && revalidator.state === "loading";
+		const didFinishLoading =
+			previousRevalidatorState === "loading" && revalidator.state === "idle";
+
+		if (manualInboxRefresh.phase === "requested" && didStartLoading) {
+			setManualInboxRefresh((current) =>
+				current.phase === "requested"
+					? {
+							phase: "running",
+							visibleAt: null,
+						}
+					: current,
+			);
+		}
+
+		if (
+			(manualInboxRefresh.phase === "requested" ||
+				manualInboxRefresh.phase === "running") &&
+			didFinishLoading
+		) {
+			clearRefreshLabelDelayTimeout();
+			clearRefreshLabelSettleTimeout();
+			setManualInboxRefresh((current) =>
+				current.phase === "requested" || current.phase === "running"
+					? createIdleManualInboxRefreshState()
+					: current,
+			);
+		}
+
+		if (manualInboxRefresh.phase === "visible" && didFinishLoading) {
+			clearRefreshLabelHideTimeout();
+			const visibleAt = manualInboxRefresh.visibleAt ?? Date.now();
+			const remaining = getRemainingInboxRefreshLabelTime(visibleAt);
+
+			if (remaining === 0) {
+				setManualInboxRefresh((current) =>
+					current.phase === "visible"
+						? createIdleManualInboxRefreshState()
+						: current,
+				);
+			} else {
+				refreshLabelHideTimeoutRef.current = window.setTimeout(() => {
+					refreshLabelHideTimeoutRef.current = null;
+					setManualInboxRefresh((current) =>
+						current.phase === "visible"
+							? createIdleManualInboxRefreshState()
+							: current,
+					);
+				}, remaining);
+			}
+		}
+
+		previousRevalidatorStateRef.current = revalidator.state;
+	}, [manualInboxRefresh.phase, manualInboxRefresh.visibleAt, revalidator.state]);
+
+	useEffect(() => {
+		clearRefreshLabelDelayTimeout();
+		clearRefreshLabelSettleTimeout();
+
+		if (manualInboxRefresh.phase !== "running") {
+			return;
+		}
+
+		refreshLabelDelayTimeoutRef.current = window.setTimeout(() => {
+			refreshLabelDelayTimeoutRef.current = null;
+			refreshLabelSettleTimeoutRef.current = window.setTimeout(() => {
+				refreshLabelSettleTimeoutRef.current = null;
+				if (latestRevalidatorStateRef.current !== "loading") {
+					return;
+				}
+
+				setManualInboxRefresh((current) =>
+					current.phase === "running"
+						? {
+								phase: "visible",
+								visibleAt: Date.now(),
+							}
+						: current,
+				);
+			}, INBOX_REFRESH_VISIBILITY_SETTLE_MS);
 		}, INBOX_REFRESH_LABEL_DELAY_MS);
 
 		return () => {
-			window.clearTimeout(timeoutId);
+			clearRefreshLabelDelayTimeout();
+			clearRefreshLabelSettleTimeout();
 		};
-	}, [isRefreshingInbox]);
+	}, [manualInboxRefresh.phase]);
 
 	useEffect(() => {
 		if (
@@ -818,10 +965,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									<button
 										type="button"
 										className="tool-chip tool-chip-button"
+										data-unavailable={activeAddress ? "false" : "true"}
 										onClick={() => {
+											if (
+												!activeAddress ||
+												revalidator.state !== "idle" ||
+												shouldLockRefreshButton
+											) {
+												return;
+											}
+
+											setManualInboxRefresh({
+												phase: "requested",
+												visibleAt: null,
+											});
 											revalidator.revalidate();
 										}}
-										disabled={isRefreshingInbox || !activeAddress}
+										disabled={shouldLockRefreshButton || !activeAddress}
 									>
 										{shouldShowRefreshingLabel
 											? copy.refreshingInbox

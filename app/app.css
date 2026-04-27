@@ -524,6 +524,11 @@
 	}
 
 	.tool-chip-button:disabled {
+		opacity: 1;
+		cursor: wait;
+	}
+
+	.tool-chip-button[data-unavailable="true"]:disabled {
 		opacity: 0.56;
 		cursor: not-allowed;
 	}
