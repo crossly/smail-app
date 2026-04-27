@@ -32,6 +32,7 @@ import {
 	createSiteConfig,
 	replaceSiteText,
 } from "~/utils/site-config";
+import { getRootTheme } from "~/utils/route-loader-data";
 import { DEFAULT_THEME, parseThemeFromCookieHeader } from "~/utils/theme";
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -137,9 +138,9 @@ export function meta({ data, location }: Route.MetaArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	const location = useLocation();
-	const { theme } = useLoaderData<typeof loader>();
+	const loaderData = useLoaderData<typeof loader>();
 	const locale = getLocaleFromPathname(location.pathname);
-	const resolvedTheme = theme ?? DEFAULT_THEME;
+	const resolvedTheme = getRootTheme(loaderData) ?? DEFAULT_THEME;
 
 		return (
 			<html

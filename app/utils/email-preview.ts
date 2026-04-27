@@ -11,3 +11,15 @@ export function shouldLoadEmailPreview(
 ): boolean {
 	return !body && !status;
 }
+
+export function shouldCollapseExpandedEmail(
+	currentEmailId: string | null,
+	emails: Array<{ id: string }>,
+	revalidatorState: "idle" | "loading",
+): boolean {
+	if (!currentEmailId || revalidatorState !== "idle") {
+		return false;
+	}
+
+	return !emails.some((email) => email.id === currentEmailId);
+}

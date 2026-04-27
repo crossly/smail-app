@@ -19,6 +19,7 @@ import { getDictionary } from "~/i18n/messages";
 import type { Email, EmailDetail } from "~/types/email";
 import { getAddressActionLabelKey } from "~/utils/address-composer";
 import {
+	shouldCollapseExpandedEmail,
 	shouldLoadEmailPreview,
 	toggleExpandedEmailId,
 } from "~/utils/email-preview";
@@ -575,14 +576,16 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	}, [fetcher.data, fetcher.state, revalidator]);
 
 	useEffect(() => {
-		if (!expandedEmailId) {
-			return;
-		}
-
-		if (!emails.some((email) => email.id === expandedEmailId)) {
+		if (
+			shouldCollapseExpandedEmail(
+				expandedEmailId,
+				emails,
+				revalidator.state,
+			)
+		) {
 			setExpandedEmailId(null);
 		}
-	}, [emails, expandedEmailId]);
+	}, [emails, expandedEmailId, revalidator.state]);
 
 	useEffect(() => {
 		if (activeAddress) {

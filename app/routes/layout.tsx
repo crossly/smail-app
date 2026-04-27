@@ -14,6 +14,7 @@ import {
 	toLocalePath,
 } from "~/i18n/config";
 import { getDictionary } from "~/i18n/messages";
+import { getLayoutShellLoaderData } from "~/utils/route-loader-data";
 import {
 	createThemeCookie,
 	parseThemeFromCookieHeader,
@@ -46,17 +47,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function Layout({ loaderData }: Route.ComponentProps) {
 	const siteConfig = useSiteConfig();
 	const toolShell = getToolShellConfig();
-	const [theme, setTheme] = useState<ThemeMode>(loaderData.theme);
+	const layoutShell = getLayoutShellLoaderData(loaderData);
+	const [theme, setTheme] = useState<ThemeMode>(layoutShell.theme);
 	const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
 	const languageMenuRef = useRef<HTMLDivElement | null>(null);
 	const location = useLocation();
 	const navigate = useNavigate();
-	const locale = loaderData.locale;
+	const locale = layoutShell.locale;
 	const copy = getDictionary(locale, siteConfig).layout;
 	const localeEntries = Object.entries(LOCALE_LABELS) as [Locale, string][];
 	const currentLocaleLabel = LOCALE_LABELS[locale];
 
 	const localizeLink = (path: string) => toLocalePath(path, locale);
+
+	useEffect(() => {
+		setTheme(layoutShell.theme);
+	}, [layoutShell.theme]);
 
 	useEffect(() => {
 		if (typeof document === "undefined") {
@@ -222,7 +228,7 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 						<div />
 					) : (
 						<div className="text-center sm:text-left">
-							© {loaderData.renderedYear} {siteConfig.siteName} · {copy.copyright}
+							© {layoutShell.renderedYear} {siteConfig.siteName} · {copy.copyright}
 						</div>
 					)}
 				</footer>
