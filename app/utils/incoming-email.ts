@@ -29,13 +29,18 @@ function getAddressDomain(address: string): string | null {
 	return address.slice(atIndex + 1).toLowerCase();
 }
 
+function normalizeIncomingAddress(address: string): string {
+	return address.trim().toLowerCase();
+}
+
 export async function handleIncomingEmail(
 	env: Pick<Env, "D1" | "R2" | "MAIL_DOMAIN">,
 	input: IncomingEmailInput,
 	options: IncomingEmailOptions,
 ): Promise<IncomingEmailResult> {
 	const mailDomain = env.MAIL_DOMAIN.toLowerCase();
-	if (getAddressDomain(input.to) !== mailDomain) {
+	const normalizedToAddress = normalizeIncomingAddress(input.to);
+	if (getAddressDomain(normalizedToAddress) !== mailDomain) {
 		return { status: "ignored-domain" };
 	}
 
@@ -45,7 +50,7 @@ export async function handleIncomingEmail(
 		(options.warn ?? console.warn)(
 			"Incoming email rejected because it exceeded the size limit",
 			{
-				to: input.to,
+				to: normalizedToAddress,
 				rawBytes: raw.byteLength,
 				maxRawBytes,
 			},
@@ -59,7 +64,7 @@ export async function handleIncomingEmail(
 		parsed = await parser.parse(raw);
 	} catch {
 		(options.warn ?? console.warn)("Incoming email rejected because parsing failed", {
-			to: input.to,
+			to: normalizedToAddress,
 			rawBytes: raw.byteLength,
 		});
 		return { status: "parse-failed" };
@@ -69,7 +74,7 @@ export async function handleIncomingEmail(
 	await persistIncomingEmail(env, {
 		id,
 		raw,
-		toAddress: input.to,
+		toAddress: normalizedToAddress,
 		fromName: parsed.from?.name,
 		fromAddress: parsed.from?.address,
 		subject: parsed.subject,

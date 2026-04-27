@@ -6,6 +6,11 @@ type ReserveEmailAddressOptions = {
 	now?: number;
 };
 
+type ReleaseEmailAddressReservationOptions = {
+	address: string;
+	ownerToken: string;
+};
+
 export async function reserveEmailAddress(
 	env: Pick<Env, "D1">,
 	options: ReserveEmailAddressOptions,
@@ -27,8 +32,25 @@ export async function reserveEmailAddress(
 			.run();
 		return true;
 	} catch {
-		return false;
+		const result = await env.D1.prepare(
+			"UPDATE email_reservations SET issued_at = ?, expires_at = ? WHERE address = ? AND owner_token = ?",
+		)
+			.bind(now, expiresAt, options.address, options.ownerToken)
+			.run();
+		return (result.meta?.changes ?? 0) > 0;
 	}
+}
+
+export async function releaseEmailAddressReservation(
+	env: Pick<Env, "D1">,
+	options: ReleaseEmailAddressReservationOptions,
+): Promise<boolean> {
+	const result = await env.D1.prepare(
+		"DELETE FROM email_reservations WHERE address = ? AND owner_token = ?",
+	)
+		.bind(options.address, options.ownerToken)
+		.run();
+	return (result.meta?.changes ?? 0) > 0;
 }
 
 export async function cleanupExpiredEmailReservations(

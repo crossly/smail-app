@@ -27,8 +27,11 @@ import {
 	generateEmailAddress,
 	normalizeEmailPrefix,
 } from "~/utils/mail";
-import { getMailboxVisibleSince, isAddressExpired } from "~/utils/mail-access";
-import { reserveEmailAddress } from "~/utils/mail-reservations";
+import { getMailboxVisibleSince } from "~/utils/mail-access";
+import {
+	releaseEmailAddressReservation,
+	reserveEmailAddress,
+} from "~/utils/mail-reservations";
 import {
 	isInboxRefreshing,
 	shouldRefreshInboxAfterAddressUpdate,
@@ -236,6 +239,21 @@ async function getEmails(
 	return results as Email[];
 }
 
+async function releaseSessionReservationIfPresent(
+	env: Pick<Env, "D1">,
+	address: string | null,
+	ownerToken: unknown,
+) {
+	if (!address || typeof ownerToken !== "string") {
+		return false;
+	}
+
+	return releaseEmailAddressReservation(env, {
+		address,
+		ownerToken,
+	});
+}
+
 type HomeActionData = {
 	addresses: string[];
 	customPrefix: string;
@@ -267,22 +285,19 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		requestUrl: request.url,
 	});
 
-	if (addresses.length > 0 && isAddressExpired(addressIssuedAt, now)) {
-		addresses = [generateEmailAddress(siteConfig.mailDomain)];
-		addressIssuedAt = now;
-		session.set("addresses", addresses);
-		session.set("addressIssuedAt", addressIssuedAt);
-		session.unset("reservationOwnerToken");
-		shouldCommitSession = true;
-	} else if (addresses.length > 0 && !addressIssuedAt) {
+	if (addresses.length > 0 && !addressIssuedAt) {
 		addressIssuedAt = now;
 		session.set("addressIssuedAt", addressIssuedAt);
+	}
+
+	if (addresses.length > 0) {
+		// Keep an active mailbox session alive while the user is still visiting.
 		shouldCommitSession = true;
 	}
 
 	const visibleSince = getMailboxVisibleSince(addressIssuedAt, now);
 	const emails =
-		addresses.length > 0 && visibleSince !== null
+		addresses.length > 0
 			? await getEmails(context.cloudflare.env.D1, addresses[0]!, visibleSince)
 			: [];
 
@@ -314,6 +329,8 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 	const cookieHeader = request.headers.get("Cookie");
 	const session = await getSession(cookieHeader);
 	let addresses: string[] = (session.get("addresses") || []) as string[];
+	const activeAddress = addresses[0] ?? null;
+	const reservationOwnerToken = session.get("reservationOwnerToken");
 	let customPrefix = "";
 	let didUpdateAddress = false;
 	let error: string | undefined;
@@ -350,6 +367,14 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 						break;
 					}
 
+					if (activeAddress && activeAddress !== customAddress) {
+						await releaseSessionReservationIfPresent(
+							context.cloudflare.env,
+							activeAddress,
+							reservationOwnerToken,
+						);
+					}
+
 					addresses = [customAddress];
 					session.set("addresses", addresses);
 					session.set("addressIssuedAt", Date.now());
@@ -359,6 +384,11 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 					error = copy.customPrefixError;
 				}
 			} else {
+				await releaseSessionReservationIfPresent(
+					context.cloudflare.env,
+					activeAddress,
+					reservationOwnerToken,
+				);
 				addresses = [generateEmailAddress(siteConfig.mailDomain)];
 				session.set("addresses", addresses);
 				session.set("addressIssuedAt", Date.now());
@@ -368,6 +398,11 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 			break;
 		}
 		case "delete": {
+			await releaseSessionReservationIfPresent(
+				context.cloudflare.env,
+				activeAddress,
+				reservationOwnerToken,
+			);
 			addresses = [];
 			customPrefix = "";
 			session.set("addresses", addresses);

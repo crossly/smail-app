@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
 	cleanupExpiredEmailReservations,
+	releaseEmailAddressReservation,
 	reserveEmailAddress,
 } from "./mail-reservations.ts";
 
@@ -19,6 +20,28 @@ function createReservationEnv(rows: {
 					bind(...values: unknown[]) {
 						return {
 							async run() {
+								if (
+									sql.startsWith(
+										"DELETE FROM email_reservations WHERE address = ? AND owner_token = ?",
+									)
+								) {
+									const [address, ownerToken] = values as [string, string];
+									const previousLength = reservations.length;
+									for (let index = reservations.length - 1; index >= 0; index--) {
+										if (
+											reservations[index]!.address === address &&
+											reservations[index]!.owner_token === ownerToken
+										) {
+											reservations.splice(index, 1);
+										}
+									}
+									return {
+										meta: {
+											changes: previousLength - reservations.length,
+										},
+									};
+								}
+
 								if (sql.startsWith("DELETE FROM email_reservations WHERE address")) {
 									const [address, now] = values as [string, number];
 									for (let index = reservations.length - 1; index >= 0; index--) {
@@ -59,6 +82,26 @@ function createReservationEnv(rows: {
 									});
 									assert.equal(issuedAt, 1_700_000_000_000);
 									return {};
+								}
+
+								if (sql.startsWith("UPDATE email_reservations")) {
+									const [issuedAt, expiresAt, address, ownerToken] = values as [
+										number,
+										number,
+										string,
+										string,
+									];
+									const row = reservations.find(
+										(candidate) =>
+											candidate.address === address &&
+											candidate.owner_token === ownerToken,
+									);
+									if (!row) {
+										return { meta: { changes: 0 } };
+									}
+									row.expires_at = expiresAt;
+									assert.equal(issuedAt, 1_700_000_000_000);
+									return { meta: { changes: 1 } };
 								}
 
 								throw new Error(`Unexpected SQL: ${sql}`);
@@ -119,6 +162,35 @@ test("reserveEmailAddress rejects an active reservation owned by another session
 	assert.equal(reservations[0]!.owner_token, "owner-1");
 });
 
+test("reserveEmailAddress refreshes an active reservation owned by the same session", async () => {
+	const now = 1_700_000_000_000;
+	const { env, reservations } = createReservationEnv([
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			owner_token: "owner-1",
+			expires_at: now + 60_000,
+		},
+	]);
+
+	const reserved = await reserveEmailAddress(
+		env as unknown as Pick<Env, "D1">,
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			ownerToken: "owner-1",
+			now,
+		},
+	);
+
+	assert.equal(reserved, true);
+	assert.deepEqual(reservations, [
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			owner_token: "owner-1",
+			expires_at: now + 24 * 60 * 60 * 1000,
+		},
+	]);
+});
+
 test("reserveEmailAddress replaces an expired reservation", async () => {
 	const now = 1_700_000_000_000;
 	const { env, reservations } = createReservationEnv([
@@ -170,6 +242,54 @@ test("cleanupExpiredEmailReservations removes expired reservations", async () =>
 			address: "fresh@mail.056650.xyz",
 			owner_token: "owner-2",
 			expires_at: now + 1,
+		},
+	]);
+});
+
+test("releaseEmailAddressReservation removes a reservation owned by the current session", async () => {
+	const { env, reservations } = createReservationEnv([
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			owner_token: "owner-1",
+			expires_at: 1_700_000_000_000 + 60_000,
+		},
+	]);
+
+	const released = await releaseEmailAddressReservation(
+		env as unknown as Pick<Env, "D1">,
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			ownerToken: "owner-1",
+		},
+	);
+
+	assert.equal(released, true);
+	assert.deepEqual(reservations, []);
+});
+
+test("releaseEmailAddressReservation does not delete another session's reservation", async () => {
+	const { env, reservations } = createReservationEnv([
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			owner_token: "owner-1",
+			expires_at: 1_700_000_000_000 + 60_000,
+		},
+	]);
+
+	const released = await releaseEmailAddressReservation(
+		env as unknown as Pick<Env, "D1">,
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			ownerToken: "owner-2",
+		},
+	);
+
+	assert.equal(released, false);
+	assert.deepEqual(reservations, [
+		{
+			address: "reuse-this-box@mail.056650.xyz",
+			owner_token: "owner-1",
+			expires_at: 1_700_000_000_000 + 60_000,
 		},
 	]);
 });
