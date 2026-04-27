@@ -40,6 +40,7 @@
 
 - 首页临时邮箱收件箱
 - 邮件预览弹窗（解析 HTML/Text）
+- 面向 agent / 自动化程序的 Mailbox API
 - 多语言路由（`/:lang?`）
 - SEO 路由：`/robots.txt`、`/sitemap.xml`、`/rss.xml`
 - 多语言 Markdown 页面（about/faq/privacy/terms + 长尾 SEO 落地页）
@@ -54,10 +55,196 @@
 3. 首页按当前会话中的地址读取 D1 列表
 4. 打开邮件详情时，通过 `/api/email/:id`：
    - 校验该邮件地址属于当前会话
-   - 校验地址是否超过 24h
+   - 校验邮件仍在 24 小时保留窗口内
    - 从 R2 读取原始邮件并解析后返回
 
+5. 自动化 API 通过 `/api/mailboxes` 创建邮箱并返回 `mailboxToken`
+6. 自动化 API 通过 `Authorization: Bearer <mailboxToken>` 拉取列表和邮件详情
+
 说明：当前“24 小时”同时体现在 Cookie Session 可访问窗口、收件箱查询窗口以及 `scheduled` 定时清理；Worker 每 30 分钟调用 `cleanupExpiredEmails`，清理过期 D1 元数据、R2 原始邮件内容和自定义地址占用记录。
+
+## Automation API
+
+这套 API 主要给 agent、脚本、CI、浏览器自动化流程和第三方程序集成临时邮箱使用。
+
+### 认证方式
+
+- 所有自动化接口都使用 `Authorization: Bearer <mailboxToken>`
+- `mailboxToken` 只能由服务端生成，客户端不能自行伪造
+- 自定义前缀邮箱如果占有权发生变化，旧 `mailboxToken` 会立即失效，即使 token 自身还没过期
+
+### mailboxToken 怎么生成
+
+`mailboxToken` 不是随机字符串拼出来的，而是服务端签发的带签名令牌，当前实现位于 `app/.server/api-mailboxes.ts`：
+
+1. 服务端先构造 payload：
+   - `v`：token 版本，当前固定为 `1`
+   - `address`：邮箱地址
+   - `expiresAt`：token 到期时间（当前为签发后 24 小时）
+   - `ownerToken`：只有自定义前缀邮箱才会带上，用于绑定当前 reservation 占有权
+2. payload 会先被 JSON 序列化，再做 `base64url` 编码
+3. 服务端使用 `SESSION_SECRETS` 的第一个 secret，对编码后的 payload 做 `HMAC-SHA256` 签名
+4. 最终 token 结构是：
+
+```text
+<base64url-payload>.<base64url-signature>
+```
+
+5. 校验时会：
+   - 用 `SESSION_SECRETS` 中所有 secret 依次验签，支持 secret 轮换
+   - 检查 `expiresAt`
+   - 检查 token 中的 `address` 是否与 URL 中的地址一致
+   - 如果是自定义前缀邮箱，再回查 D1 `email_reservations`，确认 `ownerToken` 仍是当前占有者
+
+说明：
+
+- 随机邮箱 token 只校验签名、地址和过期时间
+- 自定义前缀邮箱 token 额外校验 reservation 占有权
+- 因为签名依赖 `SESSION_SECRETS`，所以外部程序不能脱离服务端自己生成合法 token
+
+### 1. 创建邮箱
+
+`POST /api/mailboxes`
+
+请求头：
+
+```http
+Content-Type: application/json
+Authorization: Bearer <oldMailboxToken>
+```
+
+说明：
+
+- `Authorization` 是可选的
+- 如果你要从一个已有自定义前缀邮箱切换到另一个邮箱，带上旧 token，服务端会顺手释放旧 reservation
+- 不传 `prefix` 时会生成随机邮箱
+- 传 `prefix` 时会生成固定前缀邮箱，例如 `reuse-this-box@mail.056650.xyz`
+
+请求体：
+
+```json
+{
+  "prefix": "reuse-this-box"
+}
+```
+
+随机邮箱也可以传空对象：
+
+```json
+{}
+```
+
+示例：
+
+```bash
+curl -X POST 'https://mail.056650.xyz/api/mailboxes' \
+  -H 'content-type: application/json' \
+  -d '{"prefix":"reuse-this-box"}'
+```
+
+成功响应：`201 Created`
+
+```json
+{
+  "address": "reuse-this-box@mail.056650.xyz",
+  "mailboxToken": "eyJ2IjoxLCJhZGRyZXNzIjoicmV1c2UtdGhpcy1ib3hAbWFpbC4wNTY2NTAueHl6IiwiZXhwaXJlc0F0IjoxNzAwMDg2NDAwMDAwLCJvd25lclRva2VuIjoiZ1M2R2JjT3VfRjJqQ2J6In0.<signature>",
+  "expiresAt": 1700086400000
+}
+```
+
+常见错误：
+
+- `400`：prefix 非法，或 JSON 格式错误
+- `409`：自定义前缀当前已被别的会话占用
+- `415`：请求不是 `application/json`
+
+### 2. 拉取邮件列表
+
+`GET /api/mailboxes/:address/emails`
+
+示例：
+
+```bash
+curl 'https://mail.056650.xyz/api/mailboxes/reuse-this-box@mail.056650.xyz/emails' \
+  -H "Authorization: Bearer $MAILBOX_TOKEN"
+```
+
+成功响应：`200 OK`
+
+```json
+{
+  "address": "reuse-this-box@mail.056650.xyz",
+  "emails": [
+    {
+      "id": "msg-2",
+      "address": "reuse-this-box@mail.056650.xyz",
+      "fromName": "Sender Two",
+      "fromAddress": "two@example.test",
+      "subject": "Second",
+      "time": 1700000000000
+    }
+  ]
+}
+```
+
+说明：
+
+- 只返回当前 24 小时保留窗口内的邮件
+- 按时间倒序返回
+- 最多返回 100 封
+
+常见错误：
+
+- `401`：缺少 `Authorization: Bearer ...`
+- `403`：token 无效、已过期，或自定义前缀占有权已变化
+- `404`：地址参数缺失或路由不匹配
+
+### 3. 拉取单封邮件详情
+
+`GET /api/mailboxes/:address/emails/:id`
+
+示例：
+
+```bash
+curl 'https://mail.056650.xyz/api/mailboxes/reuse-this-box@mail.056650.xyz/emails/msg-1' \
+  -H "Authorization: Bearer $MAILBOX_TOKEN"
+```
+
+成功响应：`200 OK`
+
+```json
+{
+  "id": "msg-1",
+  "address": "reuse-this-box@mail.056650.xyz",
+  "fromName": "Sender One",
+  "fromAddress": "one@example.test",
+  "subject": "Hello",
+  "time": 1700000000000,
+  "text": "Verification code: 123456",
+  "html": "<!DOCTYPE html>..."
+}
+```
+
+说明：
+
+- `text` 是解析出的纯文本正文
+- `html` 是经过清洗后的可渲染 HTML，适合直接嵌入预览 iframe 或 HTML viewer
+
+常见错误：
+
+- `401`：缺少 token
+- `403`：token 无效、过期，或占有权变化
+- `404`：邮件不存在、已过期，或原始内容已被清理
+
+### 推荐接入方式
+
+给 agent / 脚本接入时，推荐按下面流程：
+
+1. `POST /api/mailboxes` 创建邮箱并保存 `address` 与 `mailboxToken`
+2. 轮询 `GET /api/mailboxes/:address/emails`
+3. 收到目标邮件后，用 `GET /api/mailboxes/:address/emails/:id` 拉取正文
+4. 如果你需要稳定复用同一个地址，始终传 `prefix`
+5. 如果服务返回 `403` 且你用的是自定义前缀邮箱，优先认为该地址占有权已经变化，应该重新创建邮箱并拿新 token
 
 ## 目录结构
 
@@ -154,6 +341,8 @@ pnpm wrangler secret put SESSION_SECRETS
 
 - `migrations/20260211_create_emails.sql`
 - `migrations/20260212_email_indexes.sql`
+- `migrations/20260213_create_email_reservations.sql`
+- `migrations/20260427_normalize_email_recipient_casing.sql`
 
 首次部署或表结构变更后，执行：
 

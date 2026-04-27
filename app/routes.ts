@@ -44,5 +44,11 @@ export default [
 			route(`:lang?/${page}`, "routes/md.tsx", { id: `md-${page}` }),
 		),
 	]),
+	route("/api/mailboxes", "routes/api.mailboxes.ts"),
+	route("/api/mailboxes/:address/emails", "routes/api.mailbox.emails.ts"),
+	route(
+		"/api/mailboxes/:address/emails/:id",
+		"routes/api.mailbox.email.ts",
+	),
 	route("/api/email/:id", "routes/api.email.ts"),
 ] satisfies RouteConfig;

@@ -1,5 +1,5 @@
 import { createCookieSessionStorage } from "react-router";
-import { MAIL_RETENTION_HOURS } from "~/utils/mail-retention";
+import { MAIL_RETENTION_HOURS } from "../utils/mail-retention.ts";
 
 type SessionData = {
 	addresses: string[];
@@ -11,7 +11,7 @@ let sessionStorage: ReturnType<
 	typeof createCookieSessionStorage<SessionData>
 > | null = null;
 
-function getSessionSecrets(env: Pick<Env, "SESSION_SECRETS">): string[] {
+export function getSessionSecrets(env: Pick<Env, "SESSION_SECRETS">): string[] {
 	const rotatedSecrets = (env.SESSION_SECRETS ?? "")
 		.split(",")
 		.map((secret) => secret.trim())

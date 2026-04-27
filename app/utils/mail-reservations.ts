@@ -11,6 +11,11 @@ type ReleaseEmailAddressReservationOptions = {
 	ownerToken: string;
 };
 
+export type ActiveEmailReservation = {
+	owner_token: string;
+	expires_at: number;
+};
+
 export async function reserveEmailAddress(
 	env: Pick<Env, "D1">,
 	options: ReserveEmailAddressOptions,
@@ -49,8 +54,21 @@ export async function releaseEmailAddressReservation(
 		"DELETE FROM email_reservations WHERE address = ? AND owner_token = ?",
 	)
 		.bind(options.address, options.ownerToken)
-		.run();
+	.run();
 	return (result.meta?.changes ?? 0) > 0;
+}
+
+export async function getActiveEmailReservation(
+	env: Pick<Env, "D1">,
+	address: string,
+	now = Date.now(),
+): Promise<ActiveEmailReservation | null> {
+	return env.D1
+		.prepare(
+			"SELECT owner_token, expires_at FROM email_reservations WHERE address = ? AND expires_at > ?",
+		)
+		.bind(address, now)
+		.first<ActiveEmailReservation>();
 }
 
 export async function cleanupExpiredEmailReservations(
