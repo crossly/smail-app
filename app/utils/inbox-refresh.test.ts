@@ -153,3 +153,155 @@ test("keeps the refreshing label visible for the minimum display duration", asyn
 		0,
 	);
 });
+
+test("uses a 10 second auto refresh interval by default", async () => {
+	const { INBOX_AUTO_REFRESH_INTERVAL_MS } = await import(
+		"./inbox-refresh.ts"
+	).catch(() => ({
+		INBOX_AUTO_REFRESH_INTERVAL_MS: undefined,
+	}));
+
+	assert.equal(INBOX_AUTO_REFRESH_INTERVAL_MS, 10_000);
+});
+
+test("resolves the auto refresh interval from configuration", async () => {
+	const {
+		INBOX_AUTO_REFRESH_INTERVAL_MS,
+		resolveInboxAutoRefreshIntervalMs,
+	} = await import("./inbox-refresh.ts").catch(() => ({
+		INBOX_AUTO_REFRESH_INTERVAL_MS: undefined,
+		resolveInboxAutoRefreshIntervalMs: undefined,
+	}));
+
+	assert.equal(resolveInboxAutoRefreshIntervalMs?.("15000"), 15_000);
+	assert.equal(resolveInboxAutoRefreshIntervalMs?.(20_000), 20_000);
+	assert.equal(
+		resolveInboxAutoRefreshIntervalMs?.("not-a-number"),
+		INBOX_AUTO_REFRESH_INTERVAL_MS,
+	);
+	assert.equal(
+		resolveInboxAutoRefreshIntervalMs?.("-1"),
+		INBOX_AUTO_REFRESH_INTERVAL_MS,
+	);
+	assert.equal(
+		resolveInboxAutoRefreshIntervalMs?.(undefined),
+		INBOX_AUTO_REFRESH_INTERVAL_MS,
+	);
+});
+
+test("clamps the auto refresh countdown to the configured interval", async () => {
+	const { getInboxAutoRefreshCountdown } = await import(
+		"./inbox-refresh.ts"
+	).catch(() => ({
+		getInboxAutoRefreshCountdown: undefined,
+	}));
+	const nextRefreshAt = 1_700_000_010_000;
+
+	assert.deepEqual(
+		getInboxAutoRefreshCountdown?.({
+			nextRefreshAt,
+			now: 1_700_000_000_000,
+			intervalMs: 10_000,
+		}),
+		{
+			remainingMs: 10_000,
+			remainingSeconds: 10,
+			progress: 0,
+		},
+	);
+	assert.deepEqual(
+		getInboxAutoRefreshCountdown?.({
+			nextRefreshAt,
+			now: 1_700_000_004_250,
+			intervalMs: 10_000,
+		}),
+		{
+			remainingMs: 5_750,
+			remainingSeconds: 6,
+			progress: 0.425,
+		},
+	);
+	assert.deepEqual(
+		getInboxAutoRefreshCountdown?.({
+			nextRefreshAt,
+			now: 1_700_000_012_000,
+			intervalMs: 10_000,
+		}),
+		{
+			remainingMs: 0,
+			remainingSeconds: 0,
+			progress: 1,
+		},
+	);
+	assert.deepEqual(
+		getInboxAutoRefreshCountdown?.({
+			nextRefreshAt,
+			now: 1_700_000_000_000,
+			intervalMs: 0,
+		}),
+		{
+			remainingMs: 0,
+			remainingSeconds: 0,
+			progress: 1,
+		},
+	);
+});
+
+test("auto refreshes only when the visible inbox is idle and has an address", async () => {
+	const { shouldAutoRefreshInbox } = await import(
+		"./inbox-refresh.ts"
+	).catch(() => ({
+		shouldAutoRefreshInbox: undefined,
+	}));
+
+	assert.equal(
+		shouldAutoRefreshInbox?.({
+			activeAddress: "fresh-box@mail.056650.xyz",
+			isDocumentVisible: true,
+			now: 1_700_000_010_000,
+			nextRefreshAt: 1_700_000_010_000,
+			revalidatorState: "idle",
+		}),
+		true,
+	);
+	assert.equal(
+		shouldAutoRefreshInbox?.({
+			activeAddress: null,
+			isDocumentVisible: true,
+			now: 1_700_000_010_000,
+			nextRefreshAt: 1_700_000_010_000,
+			revalidatorState: "idle",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldAutoRefreshInbox?.({
+			activeAddress: "fresh-box@mail.056650.xyz",
+			isDocumentVisible: false,
+			now: 1_700_000_010_000,
+			nextRefreshAt: 1_700_000_010_000,
+			revalidatorState: "idle",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldAutoRefreshInbox?.({
+			activeAddress: "fresh-box@mail.056650.xyz",
+			isDocumentVisible: true,
+			now: 1_700_000_010_000,
+			nextRefreshAt: 1_700_000_010_000,
+			revalidatorState: "loading",
+		}),
+		false,
+	);
+	assert.equal(
+		shouldAutoRefreshInbox?.({
+			activeAddress: "fresh-box@mail.056650.xyz",
+			isDocumentVisible: true,
+			now: 1_700_000_009_999,
+			nextRefreshAt: 1_700_000_010_000,
+			revalidatorState: "idle",
+		}),
+		false,
+	);
+});

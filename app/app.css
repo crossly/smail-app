@@ -513,7 +513,20 @@
 	}
 
 	.tool-chip-button {
-		@apply cursor-pointer;
+		@apply relative cursor-pointer overflow-hidden;
+		min-width: 5.75rem;
+	}
+
+	.tool-chip-button::before {
+		@apply absolute inset-y-0 left-0;
+		content: "";
+		width: calc(var(--inbox-refresh-progress, 0) * 100%);
+		background: color-mix(in srgb, var(--tag-border) 22%, transparent);
+		pointer-events: none;
+	}
+
+	.tool-chip-label {
+		@apply relative z-[1];
 	}
 
 	.tool-chip-button:hover {

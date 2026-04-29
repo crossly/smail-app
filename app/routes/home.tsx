@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Button } from "@base-ui/react/button";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { Field } from "@base-ui/react/field";
@@ -40,7 +40,11 @@ import {
 } from "~/utils/mail-reservations";
 import {
 	INBOX_REFRESH_LABEL_DELAY_MS,
+	getInboxAutoRefreshCountdown,
 	getRemainingInboxRefreshLabelTime,
+	isInboxRefreshing,
+	resolveInboxAutoRefreshIntervalMs,
+	shouldAutoRefreshInbox,
 	type InboxRefreshUiPhase,
 	shouldLockInboxRefreshButton,
 	shouldShowRefreshingInboxLabel,
@@ -310,6 +314,9 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		address: addresses[0] ?? null,
 		visibleSince,
 	});
+	const inboxAutoRefreshIntervalMs = resolveInboxAutoRefreshIntervalMs(
+		context.cloudflare.env.INBOX_AUTO_REFRESH_INTERVAL_MS,
+	);
 
 	if (shouldCommitSession) {
 		const headers = new Headers();
@@ -319,6 +326,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 				addresses,
 				emails: inbox.emails,
 				inboxStatus: inbox.status,
+				inboxAutoRefreshIntervalMs,
 				locale,
 				renderedAt: now,
 			},
@@ -330,6 +338,7 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		addresses,
 		emails: inbox.emails,
 		inboxStatus: inbox.status,
+		inboxAutoRefreshIntervalMs,
 		locale,
 		renderedAt: now,
 	};
@@ -465,8 +474,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const [currentAddresses, setCurrentAddresses] = useState(
 		() => loaderData.addresses,
 	);
+	const inboxAutoRefreshIntervalMs = loaderData.inboxAutoRefreshIntervalMs;
 	const [lastInboxRefreshAt, setLastInboxRefreshAt] = useState(() =>
 		loaderData.renderedAt,
+	);
+	const [nextInboxAutoRefreshAt, setNextInboxAutoRefreshAt] = useState(
+		() => loaderData.renderedAt + inboxAutoRefreshIntervalMs,
+	);
+	const [inboxAutoRefreshNow, setInboxAutoRefreshNow] = useState(
+		() => loaderData.renderedAt,
 	);
 	const [manualInboxRefresh, setManualInboxRefresh] =
 		useState<ManualInboxRefreshState>(createIdleManualInboxRefreshState);
@@ -494,6 +510,28 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		activeAddress,
 		manualInboxRefresh.phase,
 	);
+	const isRefreshingInboxNow = isInboxRefreshing(
+		activeAddress,
+		revalidator.state,
+	);
+	const inboxAutoRefreshCountdown = getInboxAutoRefreshCountdown({
+		nextRefreshAt: nextInboxAutoRefreshAt,
+		now: inboxAutoRefreshNow,
+		intervalMs: inboxAutoRefreshIntervalMs,
+	});
+	const refreshButtonLabel =
+		shouldShowRefreshingLabel || isRefreshingInboxNow
+			? copy.refreshingInbox
+			: activeAddress
+				? `${copy.refreshInbox} · ${inboxAutoRefreshCountdown.remainingSeconds}s`
+				: copy.refreshInbox;
+	const refreshButtonStyle = {
+		"--inbox-refresh-progress": activeAddress
+			? `${inboxAutoRefreshCountdown.progress}`
+			: "0",
+	} as CSSProperties & Record<"--inbox-refresh-progress", string>;
+	const isRefreshButtonDisabled =
+		shouldLockRefreshButton || isRefreshingInboxNow || !activeAddress;
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
 	const isInboxUnavailable =
@@ -546,7 +584,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
 	useEffect(() => {
 		setLastInboxRefreshAt(loaderData.renderedAt);
-	}, [loaderData.renderedAt]);
+		setInboxAutoRefreshNow(loaderData.renderedAt);
+		setNextInboxAutoRefreshAt(
+			loaderData.renderedAt + inboxAutoRefreshIntervalMs,
+		);
+	}, [inboxAutoRefreshIntervalMs, loaderData.renderedAt]);
 
 	useEffect(() => {
 		setCurrentAddresses((current) =>
@@ -556,6 +598,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 			}),
 		);
 	}, [loaderData.addresses]);
+
+	useEffect(() => {
+		const now = Date.now();
+		setInboxAutoRefreshNow(now);
+		setNextInboxAutoRefreshAt(now + inboxAutoRefreshIntervalMs);
+	}, [activeAddress, inboxAutoRefreshIntervalMs]);
 
 	useEffect(() => {
 		return () => {
@@ -614,6 +662,86 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				: createIdleManualInboxRefreshState(),
 		);
 	}, [activeAddress]);
+
+	useEffect(() => {
+		if (!activeAddress || typeof window === "undefined") {
+			return;
+		}
+
+		let timeoutId: number | null = null;
+
+		const clearAutoRefreshTimeout = () => {
+			if (timeoutId === null) {
+				return;
+			}
+
+			window.clearTimeout(timeoutId);
+			timeoutId = null;
+		};
+
+		const queueAutoRefreshTick = () => {
+			clearAutoRefreshTimeout();
+			const now = Date.now();
+			const remainingMs = Math.max(nextInboxAutoRefreshAt - now, 0);
+			const delayMs = remainingMs === 0 ? 250 : Math.min(remainingMs, 1_000);
+
+			timeoutId = window.setTimeout(tickAutoRefresh, delayMs);
+		};
+
+		const tickAutoRefresh = () => {
+			timeoutId = null;
+
+			if (document.visibilityState !== "visible") {
+				return;
+			}
+
+			const now = Date.now();
+			setInboxAutoRefreshNow(now);
+
+			if (
+				shouldAutoRefreshInbox({
+					activeAddress,
+					isDocumentVisible: true,
+					now,
+					nextRefreshAt: nextInboxAutoRefreshAt,
+					revalidatorState: latestRevalidatorStateRef.current,
+				})
+			) {
+				setNextInboxAutoRefreshAt(now + inboxAutoRefreshIntervalMs);
+				revalidator.revalidate();
+				return;
+			}
+
+			queueAutoRefreshTick();
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState !== "visible") {
+				clearAutoRefreshTimeout();
+				return;
+			}
+
+			const now = Date.now();
+			setInboxAutoRefreshNow(now);
+			setNextInboxAutoRefreshAt(now + inboxAutoRefreshIntervalMs);
+		};
+
+		if (document.visibilityState === "visible") {
+			queueAutoRefreshTick();
+		}
+
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			clearAutoRefreshTimeout();
+		};
+	}, [
+		activeAddress,
+		inboxAutoRefreshIntervalMs,
+		nextInboxAutoRefreshAt,
+		revalidator,
+	]);
 
 	useEffect(() => {
 		const previousRevalidatorState = previousRevalidatorStateRef.current;
@@ -982,7 +1110,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 											if (
 												!activeAddress ||
 												revalidator.state !== "idle" ||
-												shouldLockRefreshButton
+												isRefreshButtonDisabled
 											) {
 												return;
 											}
@@ -991,13 +1119,19 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 												phase: "requested",
 												visibleAt: null,
 											});
+											const now = Date.now();
+											setInboxAutoRefreshNow(now);
+											setNextInboxAutoRefreshAt(
+												now + inboxAutoRefreshIntervalMs,
+											);
 											revalidator.revalidate();
 										}}
-										disabled={shouldLockRefreshButton || !activeAddress}
+										disabled={isRefreshButtonDisabled}
+										style={refreshButtonStyle}
 									>
-										{shouldShowRefreshingLabel
-											? copy.refreshingInbox
-											: copy.refreshInbox}
+										<span className="tool-chip-label">
+											{refreshButtonLabel}
+										</span>
 									</Button>
 								</div>
 							</header>

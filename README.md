@@ -322,6 +322,7 @@ pnpm run preview
 - `SITE_URL`：站点基准 URL，用于 canonical / sitemap / RSS / 结构化数据
 - `MAIL_DOMAIN`：生成临时邮箱地址时使用的收件域名
 - `SUPPORT_EMAIL`：联系页与 Markdown 文案中的支持邮箱
+- `INBOX_AUTO_REFRESH_INTERVAL_MS`：前端收件箱自动刷新间隔，默认 `10000`（10 秒）
 
 此外还需要配置一个 Worker Secret：
 

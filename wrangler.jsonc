@@ -13,7 +13,8 @@
 		"SITE_DOMAIN": "mail.056650.xyz",
 		"SITE_URL": "https://mail.056650.xyz",
 		"MAIL_DOMAIN": "mail.056650.xyz",
-		"SUPPORT_EMAIL": "support@mail.056650.xyz"
+		"SUPPORT_EMAIL": "support@mail.056650.xyz",
+		"INBOX_AUTO_REFRESH_INTERVAL_MS": "10000"
 	},
 	"secrets": {
 		"required": ["SESSION_SECRETS"]
