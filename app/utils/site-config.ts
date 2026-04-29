@@ -6,6 +6,7 @@ const LEGACY_SUPPORT_EMAIL = `support@${LEGACY_SITE_DOMAIN}`;
 
 export const DEFAULT_SITE_DOMAIN = "mail.056650.xyz";
 export const DEFAULT_SITE_URL = `https://${DEFAULT_SITE_DOMAIN}`;
+export const DEFAULT_SITE_NAME = "em@il";
 
 export type SiteEnv = Partial<{
 	SITE_DOMAIN: string;
@@ -120,7 +121,7 @@ export function createSiteConfig(options?: {
 
 	return {
 		siteDomain,
-		siteName: siteDomain,
+		siteName: DEFAULT_SITE_NAME,
 		siteUrl,
 		mailDomain,
 		supportEmail,

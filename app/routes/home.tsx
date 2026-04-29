@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@base-ui/react/button";
+import { Collapsible } from "@base-ui/react/collapsible";
+import { Field } from "@base-ui/react/field";
+import { Input } from "@base-ui/react/input";
 import { nanoid } from "nanoid";
 import {
 	data,
@@ -21,7 +25,6 @@ import { getAddressActionLabelKey } from "~/utils/address-composer";
 import {
 	shouldCollapseExpandedEmail,
 	shouldLoadEmailPreview,
-	toggleExpandedEmailId,
 } from "~/utils/email-preview";
 import {
 	generateCustomEmailAddress,
@@ -159,7 +162,6 @@ function EmailInlinePreviewPanel({
 }) {
 	return (
 		<section
-			id={`email-preview-${email.id}`}
 			className="email-preview-panel"
 			aria-label={copy.title}
 		>
@@ -821,7 +823,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 						>
 							<header className="tool-toolbar">
 								<div className="space-y-1">
-									<p className="tool-kicker">{siteConfig.mailDomain}</p>
+									<p className="tool-kicker">{siteConfig.siteName}</p>
 									<p className="tool-title">{copy.currentAddress}</p>
 								</div>
 								<div className="tool-address-status">
@@ -843,44 +845,43 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 											</>
 										) : (
 											<>
-												<label className="sr-only" htmlFor="custom-prefix">
-													{copy.customPrefixLabel}
-												</label>
-												<div className="tool-prefix-composer !mt-0">
-													<input
-														id="custom-prefix"
-														name="customPrefix"
-														type="text"
-														inputMode="text"
-														autoCapitalize="off"
-														autoComplete="off"
-														autoCorrect="off"
-														spellCheck={false}
-														className="tool-prefix-input"
-														placeholder={copy.customPrefixPlaceholder}
-														value={customPrefix}
-														onChange={(event) => {
-															setCustomPrefix(event.currentTarget.value);
-														}}
-														onKeyDown={(event) => {
-															if (event.key !== "Enter" || isSubmitting) {
-																return;
-															}
+												<Field.Root className="tool-prefix-field">
+													<Field.Label className="sr-only">
+														{copy.customPrefixLabel}
+													</Field.Label>
+													<div className="tool-prefix-composer !mt-0">
+														<Input
+															name="customPrefix"
+															type="text"
+															inputMode="text"
+															autoCapitalize="off"
+															autoComplete="off"
+															autoCorrect="off"
+															spellCheck={false}
+															className="tool-prefix-input"
+															placeholder={copy.customPrefixPlaceholder}
+															value={customPrefix}
+															onValueChange={setCustomPrefix}
+															onKeyDown={(event) => {
+																if (event.key !== "Enter" || isSubmitting) {
+																	return;
+																}
 
-															event.preventDefault();
-															submitAddressAction();
-														}}
-													/>
-													<span className="tool-prefix-domain">
-														@{siteConfig.mailDomain}
-													</span>
-												</div>
+																event.preventDefault();
+																submitAddressAction();
+															}}
+														/>
+														<span className="tool-prefix-domain">
+															@{siteConfig.mailDomain}
+														</span>
+													</div>
+												</Field.Root>
 											</>
 										)}
 									</div>
 									{activeAddress ? (
 										<div className="tool-address-actions">
-											<button
+											<Button
 												type="button"
 												className="neo-button-secondary w-full sm:w-auto"
 												onClick={async () => {
@@ -899,8 +900,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 												}}
 											>
 												{copied ? copy.copied : copy.copy}
-											</button>
-											<button
+											</Button>
+											<Button
 												type="button"
 												name="intent"
 												value="delete"
@@ -916,7 +917,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 												{submittingIntent === "delete" && isSubmitting
 													? copy.deleting
 													: copy.deleteAddress}
-											</button>
+											</Button>
 										</div>
 									) : null}
 								</div>
@@ -925,7 +926,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									<p className="tool-field-hint !mt-0">{copy.customPrefixHint}</p>
 								) : null}
 
-								<button
+								<Button
 									type="button"
 									name="intent"
 									value="generate"
@@ -936,7 +937,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									{submittingIntent === "generate" && isSubmitting
 										? copy.generating
 										: copy[addressActionLabelKey]}
-								</button>
+								</Button>
 
 								{shouldShowPrefixError ? (
 									<p className="tool-field-error" role="alert">
@@ -962,10 +963,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									</p>
 								</div>
 								<div className="flex flex-wrap items-center justify-end gap-2">
-									<span className="tool-chip hidden sm:inline-flex">
-										{copy.tapToOpen}
-									</span>
-									<button
+									<Button
 										type="button"
 										className="tool-chip tool-chip-button"
 										data-unavailable={activeAddress ? "false" : "true"}
@@ -989,7 +987,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 										{shouldShowRefreshingLabel
 											? copy.refreshingInbox
 											: copy.refreshInbox}
-									</button>
+									</Button>
 								</div>
 							</header>
 
@@ -1014,18 +1012,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 												emailFrameHeightsById[email.id] ?? 420;
 
 											return (
-												<div key={email.id} className="email-thread">
-													<button
+												<Collapsible.Root
+													key={email.id}
+													className="email-thread"
+													open={isExpanded}
+													onOpenChange={(open) => {
+														setExpandedEmailId((current) =>
+															open ? email.id : current === email.id ? null : current,
+														);
+													}}
+												>
+													<Collapsible.Trigger
 														type="button"
 														className="email-item"
-														aria-expanded={isExpanded}
-														aria-controls={`email-preview-${email.id}`}
 														data-expanded={isExpanded ? "true" : "false"}
-														onClick={() => {
-															setExpandedEmailId((current) =>
-																toggleExpandedEmailId(current, email.id),
-															);
-														}}
 													>
 														<div className="min-w-0">
 															<div className="flex items-start justify-between gap-3">
@@ -1059,24 +1059,27 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 																</span>
 															</div>
 														</div>
-													</button>
+													</Collapsible.Trigger>
 
-													{isExpanded ? (
-															<EmailInlinePreviewPanel
-																email={email}
-																detail={detail}
-																frameHeight={frameHeight}
-																loading={
-																	previewStatus !== "ready" &&
-																	previewStatus !== "error"
-																}
-																onFrameLoad={(frame) =>
-																	syncPreviewFrameHeight(email.id, frame)
-																}
+													<Collapsible.Panel
+														id={`email-preview-${email.id}`}
+														className="email-preview-collapsible"
+													>
+														<EmailInlinePreviewPanel
+															email={email}
+															detail={detail}
+															frameHeight={frameHeight}
+															loading={
+																previewStatus !== "ready" &&
+																previewStatus !== "error"
+															}
+															onFrameLoad={(frame) =>
+																syncPreviewFrameHeight(email.id, frame)
+															}
 															copy={copy.modal}
 														/>
-													) : null}
-												</div>
+													</Collapsible.Panel>
+												</Collapsible.Root>
 											);
 										})
 									)}

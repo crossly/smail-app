@@ -15,6 +15,7 @@ test("createSiteConfig derives site and mail settings from env vars", () => {
 	});
 
 	assert.equal(siteConfig.siteDomain, "mail.056650.xyz");
+	assert.equal(siteConfig.siteName, "em@il");
 	assert.equal(siteConfig.siteUrl, "https://mail.056650.xyz");
 	assert.equal(siteConfig.mailDomain, "mail.056650.xyz");
 	assert.equal(siteConfig.supportEmail, "support@mail.056650.xyz");

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@base-ui/react/button";
+import { Menu } from "@base-ui/react/menu";
 import {
 	Link,
 	Outlet,
@@ -49,8 +51,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 	const toolShell = getToolShellConfig();
 	const layoutShell = getLayoutShellLoaderData(loaderData);
 	const [theme, setTheme] = useState<ThemeMode>(layoutShell.theme);
-	const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
-	const languageMenuRef = useRef<HTMLDivElement | null>(null);
 	const location = useLocation();
 	const navigate = useNavigate();
 	const locale = layoutShell.locale;
@@ -75,39 +75,6 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 		}
 	}, [theme]);
 
-	useEffect(() => {
-		setIsLanguageMenuOpen(false);
-	}, [location.pathname, location.search, location.hash]);
-
-	useEffect(() => {
-		if (!isLanguageMenuOpen) {
-			return;
-		}
-
-		const handlePointerDown = (event: PointerEvent) => {
-			const target = event.target;
-			if (!(target instanceof Node)) {
-				return;
-			}
-			if (!languageMenuRef.current?.contains(target)) {
-				setIsLanguageMenuOpen(false);
-			}
-		};
-
-		const handleEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setIsLanguageMenuOpen(false);
-			}
-		};
-
-		window.addEventListener("pointerdown", handlePointerDown);
-		window.addEventListener("keydown", handleEscape);
-		return () => {
-			window.removeEventListener("pointerdown", handlePointerDown);
-			window.removeEventListener("keydown", handleEscape);
-		};
-	}, [isLanguageMenuOpen]);
-
 	const toggleTheme = () => {
 		const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
 		setTheme(nextTheme);
@@ -116,12 +83,10 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 
 	const switchLocale = (nextLocale: Locale) => {
 		if (nextLocale === locale) {
-			setIsLanguageMenuOpen(false);
 			return;
 		}
 		const targetPath = `${toLocalePath(location.pathname, nextLocale)}${location.search}${location.hash}`;
 		navigate(targetPath);
-		setIsLanguageMenuOpen(false);
 	};
 
 	return (
@@ -154,68 +119,65 @@ export default function Layout({ loaderData }: Route.ComponentProps) {
 						{toolShell.primaryNavItems.length > 0 && (
 							<nav className="hidden items-center gap-2 text-xs font-semibold sm:flex" />
 						)}
-						<div
-							className="language-menu"
-							ref={languageMenuRef}
-						>
-							<button
-								type="button"
-								className="language-menu-trigger"
-								aria-haspopup="menu"
-								aria-expanded={isLanguageMenuOpen}
-								onClick={() => {
-									setIsLanguageMenuOpen((open) => !open);
-								}}
-							>
+						<Menu.Root modal={false}>
+							<Menu.Trigger className="language-menu-trigger">
 								<span className="language-menu-icon" aria-hidden="true">
-									🌐
+									Lang
 								</span>
-								<span className="language-menu-label">
-									{currentLocaleLabel}
-								</span>
-								<span
-									className="language-menu-caret"
-									aria-hidden="true"
-									data-open={isLanguageMenuOpen}
-								>
+								<span className="language-menu-label">{currentLocaleLabel}</span>
+								<span className="language-menu-caret" aria-hidden="true">
 									▾
 								</span>
-							</button>
-							<div
-								className="language-menu-panel"
-								role="menu"
-								aria-label="Select language"
-								aria-hidden={!isLanguageMenuOpen}
-								data-open={isLanguageMenuOpen ? "true" : "false"}
-							>
-								{localeEntries.map(([localeCode, label]) => (
-									<button
-										key={localeCode}
-										type="button"
-										role="menuitemradio"
-										aria-checked={localeCode === locale}
-										className="language-menu-option"
-										data-active={localeCode === locale}
-										onClick={() => switchLocale(localeCode)}
+							</Menu.Trigger>
+							<Menu.Portal>
+								<Menu.Positioner
+									className="language-menu-positioner"
+									sideOffset={8}
+									align="end"
+								>
+									<Menu.Popup
+										className="language-menu-panel"
+										aria-label="Select language"
 									>
-										<span className="language-menu-check" aria-hidden="true">
-											{localeCode === locale ? "✓" : ""}
-										</span>
-										<span className="language-menu-option-label">{label}</span>
-										<span className="language-menu-option-code">
-											{localeCode}
-										</span>
-									</button>
-								))}
-							</div>
-						</div>
-						<button
+										<Menu.RadioGroup
+											value={locale}
+											onValueChange={(nextLocale) =>
+												switchLocale(nextLocale as Locale)
+											}
+										>
+											{localeEntries.map(([localeCode, label]) => (
+												<Menu.RadioItem
+													key={localeCode}
+													value={localeCode}
+													closeOnClick
+													className="language-menu-option"
+												>
+													<Menu.RadioItemIndicator
+														className="language-menu-check"
+														keepMounted
+													>
+														✓
+													</Menu.RadioItemIndicator>
+													<span className="language-menu-option-label">
+														{label}
+													</span>
+													<span className="language-menu-option-code">
+														{localeCode}
+													</span>
+												</Menu.RadioItem>
+											))}
+										</Menu.RadioGroup>
+									</Menu.Popup>
+								</Menu.Positioner>
+							</Menu.Portal>
+						</Menu.Root>
+						<Button
 							type="button"
 							className="theme-toggle"
 							onClick={toggleTheme}
 						>
 							{theme === "dark" ? copy.themeToLight : copy.themeToDark}
-						</button>
+						</Button>
 					</div>
 				</header>
 
