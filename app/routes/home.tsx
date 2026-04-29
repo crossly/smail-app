@@ -827,7 +827,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									<p className="tool-title">{copy.currentAddress}</p>
 								</div>
 								<div className="tool-address-status">
-									<span className="tool-chip">{siteConfig.mailDomain}</span>
 									<span className="tool-chip">24h</span>
 								</div>
 							</header>
@@ -840,7 +839,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									<div className="tool-address-meta">
 										{activeAddress ? (
 											<>
-												<p className="tool-field-label">{siteConfig.mailDomain}</p>
 												<div className="tool-address">{activeAddress}</div>
 											</>
 										) : (
@@ -991,7 +989,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 								</div>
 							</header>
 
-							<div className="tool-body min-h-[26rem]">
+							<div className="tool-body tool-inbox-body">
 								<div className="tool-inbox-list">
 									{emails.length === 0 ? (
 										<div className="tool-empty-state flex-1">

@@ -134,7 +134,7 @@ export function replaceSiteText(value: string, siteConfig: SiteConfig): string {
 	return value
 		.replaceAll(LEGACY_SUPPORT_EMAIL, siteConfig.supportEmail)
 		.replaceAll(LEGACY_SITE_URL, siteConfig.siteUrl)
-		.replaceAll(LEGACY_SITE_DOMAIN, siteConfig.siteDomain);
+		.replaceAll(LEGACY_SITE_DOMAIN, siteConfig.siteName);
 }
 
 export function replaceSiteTextDeep<T>(

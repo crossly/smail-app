@@ -34,6 +34,7 @@ test("replaceSiteText updates legacy brand references", () => {
 		replaceSiteText("Open https://smail.pw or email support@smail.pw", siteConfig),
 		"Open https://mail.056650.xyz or email support@mail.056650.xyz",
 	);
+	assert.equal(replaceSiteText("About smail.pw", siteConfig), "About em@il");
 });
 
 test("replaceSiteTextDeep walks nested site copy objects", () => {
@@ -52,7 +53,7 @@ test("replaceSiteTextDeep walks nested site copy objects", () => {
 	);
 
 	assert.deepEqual(copy, {
-		title: "About mail.056650.xyz",
-		items: ["support@mail.056650.xyz", "mail.056650.xyz Blog"],
+		title: "About em@il",
+		items: ["support@mail.056650.xyz", "em@il Blog"],
 	});
 });

@@ -39,7 +39,6 @@ export interface Dictionary {
 		};
 		inboxTag: string;
 		inboxTitle: string;
-		tapToOpen: string;
 		loadingEmails: string;
 		emptyInboxTitle: string;
 		emptyInboxDescription: string;
@@ -78,54 +77,53 @@ export interface Dictionary {
 
 const en: Dictionary = {
 	home: {
-		title: "smail.pw Temporary Email (24h) - Free Temp Mail for OTP & Sign-Ups",
+		title: "smail.pw Temporary Email - Free 24h Inbox for OTP",
 		description:
-			"Generate free temporary email (temp mail) instantly on smail.pw. Use a 24-hour disposable inbox for OTP verification, quick sign-ups, and spam control.",
+			"Create a free 24-hour temporary inbox for sign-ups and OTP codes. No account required; messages are removed after 24 hours.",
 		keywords:
 			"smail, smail temp mail, temporary email, temp mail, disposable email, temporary email generator, 24 hour temporary email, no registration email, otp email, smail.pw",
-		heroTag: "Disposable mailbox",
-		heroTitle: "Create a 24-hour temporary email inbox in one tap.",
+		heroTag: "Temporary inbox",
+		heroTitle: "Create a 24-hour email address in one tap.",
 		heroDescription:
-			"Generate a temp mail address for sign-ups and OTP links in seconds. Messages auto-expire after 24 hours to reduce data exposure.",
-		loadingAddresses: "Loading addresses...",
-		currentAddress: "Current disposable address",
+			"Use it for sign-ups, OTP codes, and one-off messages. Mail is removed after 24 hours.",
+		loadingAddresses: "Loading address...",
+		currentAddress: "Current temporary email",
 		copy: "Copy",
 		copied: "Copied",
 		deleteAddress: "Delete address",
 		deleting: "Deleting...",
 		generateNew: "Generate new",
 		generating: "Generating...",
-		noAddressTitle: "No disposable email yet",
+		noAddressTitle: "No address yet",
 		noAddressDescription:
-			"Generate a temporary address to use for sign-ups and one-off verifications.",
+			"Create a temporary address for sign-ups and one-time verification.",
 		generateAddress: "Generate address",
 		customPrefixLabel: "Custom prefix",
-		customPrefixPlaceholder: "Reuse an older prefix",
+		customPrefixPlaceholder: "Enter a previous prefix",
 		customPrefixHint:
-			"Use 3-32 lowercase letters, numbers, or single hyphens.",
+			"Use 3-32 lowercase letters, numbers, or single hyphens only.",
 		customPrefixAction: "Reuse address",
 		customPrefixError:
-			"Use 3-32 lowercase letters, numbers, or single hyphens.",
+			"Use 3-32 lowercase letters, numbers, or single hyphens only.",
 		stats: {
 			lifetimeValue: "24h",
 			refreshValue: "Instant",
-			registrationValue: "Zero",
+			registrationValue: "None",
 			lifetime: "Email retention",
 			refresh: "Inbox refresh",
-			registration: "Registration",
+			registration: "Sign-up",
 		},
 		inboxTag: "Inbox",
 		inboxTitle: "Latest emails",
-		tapToOpen: "Tap to open",
 		loadingEmails: "Loading emails...",
-		emptyInboxTitle: "Your inbox is waiting",
+		emptyInboxTitle: "Waiting for mail",
 		emptyInboxDescription:
-			"No emails yet. Messages will appear here instantly.",
+			"No messages yet. New mail will appear here.",
 		refreshInbox: "Refresh",
 		refreshingInbox: "Refreshing...",
 		lastRefresh: "Last refresh",
 		safetyHint:
-			"Do not use this address for banking, work, or critical account codes. Messages are automatically removed after 24 hours.",
+			"Do not use this address for banking, work, or important accounts. Mail is removed after 24 hours.",
 		modal: {
 			title: "Message preview",
 			from: "From",
@@ -143,31 +141,31 @@ const en: Dictionary = {
 		},
 		footerTag: "privacy-first utilities",
 		footerDescription:
-			"Disposable inbox for sign-up verification, app testing, and short-lived communication without exposing your personal mailbox.",
+			"A temporary inbox for verification, testing, and short-lived mail without exposing your personal address.",
 		footerLinks: {
 			faq: "FAQ",
 			privacy: "Privacy Policy",
 			terms: "Terms of Use",
 			about: "About smail.pw",
 		},
-		copyright: "Clean inbox, clean identity.",
-		themeToLight: "☀ Light",
-		themeToDark: "🌙 Dark",
+		copyright: "Temporary mail, less exposure.",
+		themeToLight: "Light",
+		themeToDark: "Dark",
 	},
 };
 
 const zh: Dictionary = {
 	home: {
-		title: "临时邮箱生成器（24小时）- 免费一次性邮箱免注册收验证码 | smail.pw",
+		title: "临时邮箱生成器 - 免费 24 小时收验证码邮箱 | smail.pw",
 		description:
-			"免费临时邮箱生成器，一键创建 24 小时一次性邮箱。适合临时邮箱注册、验证码接收与在线临时收信，减少垃圾邮件。",
+			"免费创建 24 小时临时邮箱，用于注册、收验证码和一次性收信。无需账号，邮件 24 小时后自动删除。",
 		keywords:
 			"临时邮箱, 一次性邮箱, 临时邮箱生成器, 免费临时邮箱, 24小时临时邮箱, 24小时邮箱, 验证码邮箱, 免注册临时邮箱, 在线临时邮箱, 国内临时邮箱, 临时邮箱注册, 邮箱生成器",
 		heroTag: "一次性邮箱",
-		heroTitle: "免费临时邮箱生成器：一键创建 24 小时收件箱。",
+		heroTitle: "一键创建 24 小时临时邮箱。",
 		heroDescription:
-			"适合临时邮箱注册、验证码与一次性下载。邮件 24 小时后自动清理，减少真实邮箱暴露。",
-		loadingAddresses: "正在加载邮箱地址...",
+			"用于注册、收验证码和一次性收信。邮件 24 小时后自动删除。",
+		loadingAddresses: "正在加载地址...",
 		currentAddress: "当前临时邮箱",
 		copy: "复制",
 		copied: "已复制",
@@ -175,33 +173,32 @@ const zh: Dictionary = {
 		deleting: "删除中...",
 		generateNew: "生成新地址",
 		generating: "生成中...",
-		noAddressTitle: "还没有临时邮箱",
+		noAddressTitle: "暂无地址",
 		noAddressDescription: "生成一个临时邮箱，用于注册和一次性验证。",
 		generateAddress: "生成地址",
 		customPrefixLabel: "自定义前缀",
-		customPrefixPlaceholder: "输入想复用的前缀",
-		customPrefixHint: "仅支持 3-32 位小写字母、数字或单个连字符。",
+		customPrefixPlaceholder: "输入曾用前缀",
+		customPrefixHint: "仅限 3-32 位小写字母、数字或单个连字符。",
 		customPrefixAction: "复用地址",
 		customPrefixError: "请输入 3-32 位小写字母、数字或单个连字符。",
 		stats: {
 			lifetimeValue: "24小时",
 			refreshValue: "即时",
-			registrationValue: "零门槛",
+			registrationValue: "免注册",
 			lifetime: "邮件保留",
 			refresh: "收件箱刷新",
 			registration: "无需注册",
 		},
 		inboxTag: "收件箱",
 		inboxTitle: "最新邮件",
-		tapToOpen: "点击查看",
 		loadingEmails: "正在加载邮件...",
-		emptyInboxTitle: "收件箱等待中",
-		emptyInboxDescription: "暂时没有邮件，收到后会立即显示在这里。",
+		emptyInboxTitle: "等待来信",
+		emptyInboxDescription: "暂无邮件，收到后会显示在这里。",
 		refreshInbox: "刷新",
 		refreshingInbox: "刷新中...",
 		lastRefresh: "最近刷新",
 		safetyHint:
-			"请勿用于银行、工作或重要账号验证码。邮件会在 24 小时后自动删除。",
+			"请勿用于银行、工作或重要账号。邮件会在 24 小时后自动删除。",
 		modal: {
 			title: "邮件预览",
 			from: "发件人",
@@ -219,16 +216,16 @@ const zh: Dictionary = {
 		},
 		footerTag: "隐私优先工具",
 		footerDescription:
-			"用于注册验证、测试和短期收信的临时邮箱服务，避免泄露你的个人邮箱地址。",
+			"用于验证、测试和短期收信，减少个人邮箱暴露。",
 		footerLinks: {
 			faq: "常见问题",
 			privacy: "隐私政策",
 			terms: "使用条款",
 			about: "关于 smail.pw",
 		},
-		copyright: "让邮箱更干净，让身份更安全。",
-		themeToLight: "☀ 浅色",
-		themeToDark: "🌙 深色",
+		copyright: "临时收信，减少暴露。",
+		themeToLight: "浅色",
+		themeToDark: "深色",
 	},
 };
 
@@ -272,7 +269,6 @@ const es: Dictionary = {
 		},
 		inboxTag: "Bandeja",
 		inboxTitle: "Últimos correos",
-		tapToOpen: "Pulsa para abrir",
 		loadingEmails: "Cargando correos...",
 		emptyInboxTitle: "Tu bandeja te espera",
 		emptyInboxDescription: "Aún no hay correos. Aparecerán aquí al instante.",
@@ -347,7 +343,6 @@ const fr: Dictionary = {
 		},
 		inboxTag: "Boîte",
 		inboxTitle: "Derniers emails",
-		tapToOpen: "Ouvrir",
 		loadingEmails: "Chargement des emails...",
 		emptyInboxTitle: "Votre boîte vous attend",
 		emptyInboxDescription:
@@ -423,7 +418,6 @@ const de: Dictionary = {
 		},
 		inboxTag: "Posteingang",
 		inboxTitle: "Neueste E-Mails",
-		tapToOpen: "Zum Öffnen tippen",
 		loadingEmails: "E-Mails werden geladen...",
 		emptyInboxTitle: "Dein Posteingang wartet",
 		emptyInboxDescription:
@@ -497,7 +491,6 @@ const ja: Dictionary = {
 		},
 		inboxTag: "受信箱",
 		inboxTitle: "最新メール",
-		tapToOpen: "タップして開く",
 		loadingEmails: "メールを読み込み中...",
 		emptyInboxTitle: "受信箱は準備完了です",
 		emptyInboxDescription:
@@ -572,7 +565,6 @@ const ko: Dictionary = {
 		},
 		inboxTag: "받은편지함",
 		inboxTitle: "최신 메일",
-		tapToOpen: "탭하여 열기",
 		loadingEmails: "메일 불러오는 중...",
 		emptyInboxTitle: "받은편지함이 준비되었습니다",
 		emptyInboxDescription: "아직 메일이 없습니다. 도착하면 즉시 표시됩니다.",
@@ -646,7 +638,6 @@ const ru: Dictionary = {
 		},
 		inboxTag: "Входящие",
 		inboxTitle: "Последние письма",
-		tapToOpen: "Нажмите, чтобы открыть",
 		loadingEmails: "Загрузка писем...",
 		emptyInboxTitle: "Ваш ящик готов",
 		emptyInboxDescription:
@@ -722,7 +713,6 @@ const pt: Dictionary = {
 		},
 		inboxTag: "Caixa de entrada",
 		inboxTitle: "E-mails recentes",
-		tapToOpen: "Toque para abrir",
 		loadingEmails: "Carregando e-mails...",
 		emptyInboxTitle: "Sua caixa está pronta",
 		emptyInboxDescription:
@@ -797,7 +787,6 @@ const ar: Dictionary = {
 		},
 		inboxTag: "الوارد",
 		inboxTitle: "أحدث الرسائل",
-		tapToOpen: "اضغط للفتح",
 		loadingEmails: "جارٍ تحميل الرسائل...",
 		emptyInboxTitle: "صندوقك بانتظارك",
 		emptyInboxDescription: "لا توجد رسائل بعد. ستظهر هنا فور وصولها.",
