@@ -23,3 +23,17 @@ export function reduceHomeAddresses(
 
 	return event.addresses;
 }
+
+export function shouldProcessHomeAddressAction(
+	action:
+		| {
+				actionId: string;
+				didUpdateAddress: boolean;
+		  }
+		| undefined,
+	lastProcessedActionId: string | null,
+): boolean {
+	return Boolean(
+		action?.didUpdateAddress && action.actionId !== lastProcessedActionId,
+	);
+}

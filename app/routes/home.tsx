@@ -26,8 +26,12 @@ import {
 	shouldCollapseExpandedEmail,
 	shouldLoadEmailPreview,
 } from "~/utils/email-preview";
-import { reduceHomeAddresses } from "~/utils/home-addresses";
+import {
+	reduceHomeAddresses,
+	shouldProcessHomeAddressAction,
+} from "~/utils/home-addresses";
 import { loadHomeInbox } from "~/utils/home-inbox";
+import { shouldCommitHomeSession } from "~/utils/home-session";
 import {
 	generateCustomEmailAddress,
 	generateEmailAddress,
@@ -254,6 +258,7 @@ async function releaseSessionReservationIfPresent(
 }
 
 type HomeActionData = {
+	actionId: string;
 	addresses: string[];
 	customPrefix: string;
 	didUpdateAddress: boolean;
@@ -298,14 +303,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		requestUrl: request.url,
 	});
 
-	if (addresses.length > 0 && !addressIssuedAt) {
+	shouldCommitSession = shouldCommitHomeSession(addresses, addressIssuedAt);
+
+	if (shouldCommitSession) {
 		addressIssuedAt = now;
 		session.set("addressIssuedAt", addressIssuedAt);
-	}
-
-	if (addresses.length > 0) {
-		// Keep an active mailbox session alive while the user is still visiting.
-		shouldCommitSession = true;
 	}
 
 	const visibleSince = getMailboxVisibleSince(addressIssuedAt, now);
@@ -355,6 +357,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 	let customPrefix = "";
 	let didUpdateAddress = false;
 	let error: string | undefined;
+	const actionId = nanoid();
 	const siteConfig = createSiteConfig({
 		env: context.cloudflare.env,
 		requestUrl: request.url,
@@ -441,6 +444,7 @@ export async function action({ request, context, params }: Route.ActionArgs) {
 
 	return data<HomeActionData>(
 		{
+			actionId,
 			addresses,
 			customPrefix,
 			didUpdateAddress,
@@ -491,6 +495,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const refreshLabelHideTimeoutRef = useRef<number | null>(null);
 	const previousRevalidatorStateRef = useRef(revalidator.state);
 	const latestRevalidatorStateRef = useRef(revalidator.state);
+	const lastProcessedAddressActionIdRef = useRef<string | null>(null);
 	latestRevalidatorStateRef.current = revalidator.state;
 	const locale = loaderData.locale || DEFAULT_LOCALE;
 	const copy = getDictionary(locale, siteConfig).home;
@@ -621,10 +626,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
 	useEffect(() => {
 		const actionData = fetcher.data;
-		if (fetcher.state !== "idle" || !actionData?.didUpdateAddress) {
+		if (fetcher.state !== "idle" || !actionData) {
 			return;
 		}
 
+		if (
+			!shouldProcessHomeAddressAction(
+				actionData,
+				lastProcessedAddressActionIdRef.current,
+			)
+		) {
+			return;
+		}
+
+		lastProcessedAddressActionIdRef.current = actionData.actionId;
 		setCurrentAddresses((current) =>
 			reduceHomeAddresses(current, {
 				source: "action",
@@ -636,7 +651,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 		if (shouldRefreshInboxAfterAddressUpdate(actionData)) {
 			revalidator.revalidate();
 		}
-	}, [fetcher.data, fetcher.state, revalidator]);
+	}, [fetcher.data, fetcher.state, revalidator.revalidate]);
 
 	useEffect(() => {
 		if (
