@@ -42,6 +42,8 @@ export interface Dictionary {
 		loadingEmails: string;
 		emptyInboxTitle: string;
 		emptyInboxDescription: string;
+		inboxUnavailableTitle: string;
+		inboxUnavailableDescription: string;
 		refreshInbox: string;
 		refreshingInbox: string;
 		lastRefresh: string;
@@ -119,6 +121,9 @@ const en: Dictionary = {
 		emptyInboxTitle: "Waiting for mail",
 		emptyInboxDescription:
 			"No messages yet. New mail will appear here.",
+		inboxUnavailableTitle: "Inbox unavailable",
+		inboxUnavailableDescription:
+			"Mail could not be loaded. Try refreshing in a moment.",
 		refreshInbox: "Refresh",
 		refreshingInbox: "Refreshing...",
 		lastRefresh: "Last refresh",
@@ -194,6 +199,8 @@ const zh: Dictionary = {
 		loadingEmails: "正在加载邮件...",
 		emptyInboxTitle: "等待来信",
 		emptyInboxDescription: "暂无邮件，收到后会显示在这里。",
+		inboxUnavailableTitle: "收件箱暂不可用",
+		inboxUnavailableDescription: "暂时无法加载邮件，请稍后刷新。",
 		refreshInbox: "刷新",
 		refreshingInbox: "刷新中...",
 		lastRefresh: "最近刷新",
@@ -272,6 +279,9 @@ const es: Dictionary = {
 		loadingEmails: "Cargando correos...",
 		emptyInboxTitle: "Tu bandeja te espera",
 		emptyInboxDescription: "Aún no hay correos. Aparecerán aquí al instante.",
+		inboxUnavailableTitle: "Bandeja no disponible",
+		inboxUnavailableDescription:
+			"No se pudieron cargar los correos. Inténtalo de nuevo en un momento.",
 		refreshInbox: "Actualizar",
 		refreshingInbox: "Actualizando...",
 		lastRefresh: "Última actualización",
@@ -347,6 +357,9 @@ const fr: Dictionary = {
 		emptyInboxTitle: "Votre boîte vous attend",
 		emptyInboxDescription:
 			"Aucun email pour l'instant. Ils apparaîtront ici immédiatement.",
+		inboxUnavailableTitle: "Boîte indisponible",
+		inboxUnavailableDescription:
+			"Impossible de charger les emails. Réessayez dans un instant.",
 		refreshInbox: "Rafraîchir",
 		refreshingInbox: "Actualisation...",
 		lastRefresh: "Dernière mise à jour",
@@ -422,6 +435,9 @@ const de: Dictionary = {
 		emptyInboxTitle: "Dein Posteingang wartet",
 		emptyInboxDescription:
 			"Noch keine E-Mails. Neue Nachrichten erscheinen sofort hier.",
+		inboxUnavailableTitle: "Posteingang nicht verfügbar",
+		inboxUnavailableDescription:
+			"E-Mails konnten nicht geladen werden. Versuche es gleich erneut.",
 		refreshInbox: "Aktualisieren",
 		refreshingInbox: "Wird aktualisiert...",
 		lastRefresh: "Zuletzt aktualisiert",
@@ -495,6 +511,9 @@ const ja: Dictionary = {
 		emptyInboxTitle: "受信箱は準備完了です",
 		emptyInboxDescription:
 			"まだメールはありません。届くとすぐここに表示されます。",
+		inboxUnavailableTitle: "受信箱を利用できません",
+		inboxUnavailableDescription:
+			"メールを読み込めませんでした。少し待ってから更新してください。",
 		refreshInbox: "更新",
 		refreshingInbox: "更新中...",
 		lastRefresh: "最終更新",
@@ -568,6 +587,9 @@ const ko: Dictionary = {
 		loadingEmails: "메일 불러오는 중...",
 		emptyInboxTitle: "받은편지함이 준비되었습니다",
 		emptyInboxDescription: "아직 메일이 없습니다. 도착하면 즉시 표시됩니다.",
+		inboxUnavailableTitle: "받은편지함을 사용할 수 없습니다",
+		inboxUnavailableDescription:
+			"메일을 불러오지 못했습니다. 잠시 후 새로고침하세요.",
 		refreshInbox: "새로고침",
 		refreshingInbox: "새로고침 중...",
 		lastRefresh: "최근 새로고침",
@@ -642,6 +664,9 @@ const ru: Dictionary = {
 		emptyInboxTitle: "Ваш ящик готов",
 		emptyInboxDescription:
 			"Писем пока нет. Новые сообщения появятся здесь мгновенно.",
+		inboxUnavailableTitle: "Ящик недоступен",
+		inboxUnavailableDescription:
+			"Не удалось загрузить письма. Попробуйте обновить позже.",
 		refreshInbox: "Обновить",
 		refreshingInbox: "Обновление...",
 		lastRefresh: "Последнее обновление",
@@ -717,6 +742,9 @@ const pt: Dictionary = {
 		emptyInboxTitle: "Sua caixa está pronta",
 		emptyInboxDescription:
 			"Ainda não há e-mails. Eles aparecerão aqui instantaneamente.",
+		inboxUnavailableTitle: "Caixa indisponível",
+		inboxUnavailableDescription:
+			"Não foi possível carregar os e-mails. Tente atualizar em instantes.",
 		refreshInbox: "Atualizar",
 		refreshingInbox: "Atualizando...",
 		lastRefresh: "Última atualização",
@@ -790,6 +818,9 @@ const ar: Dictionary = {
 		loadingEmails: "جارٍ تحميل الرسائل...",
 		emptyInboxTitle: "صندوقك بانتظارك",
 		emptyInboxDescription: "لا توجد رسائل بعد. ستظهر هنا فور وصولها.",
+		inboxUnavailableTitle: "الصندوق غير متاح",
+		inboxUnavailableDescription:
+			"تعذر تحميل الرسائل. حاول التحديث بعد قليل.",
 		refreshInbox: "تحديث",
 		refreshingInbox: "جارٍ التحديث...",
 		lastRefresh: "آخر تحديث",

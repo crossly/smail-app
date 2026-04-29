@@ -26,6 +26,8 @@ import {
 	shouldCollapseExpandedEmail,
 	shouldLoadEmailPreview,
 } from "~/utils/email-preview";
+import { reduceHomeAddresses } from "~/utils/home-addresses";
+import { loadHomeInbox } from "~/utils/home-inbox";
 import {
 	generateCustomEmailAddress,
 	generateEmailAddress,
@@ -232,20 +234,6 @@ function formatTime(
 	});
 }
 
-async function getEmails(
-	d1: D1Database,
-	toAddress: string,
-	visibleSince: number,
-) {
-	const { results } = await d1
-		.prepare(
-			"SELECT * FROM emails WHERE to_address = ? AND time >= ? ORDER BY time DESC LIMIT 100",
-		)
-		.bind(toAddress, visibleSince)
-		.all();
-	return results as Email[];
-}
-
 async function releaseSessionReservationIfPresent(
 	env: Pick<Env, "D1">,
 	address: string | null,
@@ -317,10 +305,11 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 	}
 
 	const visibleSince = getMailboxVisibleSince(addressIssuedAt, now);
-	const emails =
-		addresses.length > 0
-			? await getEmails(context.cloudflare.env.D1, addresses[0]!, visibleSince)
-			: [];
+	const inbox = await loadHomeInbox({
+		d1: context.cloudflare.env.D1,
+		address: addresses[0] ?? null,
+		visibleSince,
+	});
 
 	if (shouldCommitSession) {
 		const headers = new Headers();
@@ -328,7 +317,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 		return data(
 			{
 				addresses,
-				emails,
+				emails: inbox.emails,
+				inboxStatus: inbox.status,
 				locale,
 				renderedAt: now,
 			},
@@ -338,7 +328,8 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
 
 	return {
 		addresses,
-		emails,
+		emails: inbox.emails,
+		inboxStatus: inbox.status,
 		locale,
 		renderedAt: now,
 	};
@@ -471,6 +462,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const [emailPreviewStatusById, setEmailPreviewStatusById] = useState<
 		Record<string, "loading" | "ready" | "error">
 	>({});
+	const [currentAddresses, setCurrentAddresses] = useState(
+		() => loaderData.addresses,
+	);
 	const [lastInboxRefreshAt, setLastInboxRefreshAt] = useState(() =>
 		loaderData.renderedAt,
 	);
@@ -485,7 +479,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	const locale = loaderData.locale || DEFAULT_LOCALE;
 	const copy = getDictionary(locale, siteConfig).home;
 	const homeJsonLd = getHomeJsonLd(locale, siteConfig);
-	const addresses = fetcher.data?.addresses ?? loaderData.addresses;
+	const addresses = currentAddresses;
 	const activeAddress = addresses[0] ?? null;
 	const loaderAddress = loaderData.addresses[0] ?? null;
 	const isSubmitting = fetcher.state === "submitting";
@@ -502,6 +496,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	);
 	const shouldHideStaleEmails = activeAddress !== loaderAddress;
 	const emails = shouldHideStaleEmails ? [] : loaderData.emails;
+	const isInboxUnavailable =
+		!shouldHideStaleEmails && loaderData.inboxStatus === "unavailable";
 	const columnSpanClass = {
 		4: "xl:col-span-4",
 		6: "xl:col-span-6",
@@ -553,6 +549,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	}, [loaderData.renderedAt]);
 
 	useEffect(() => {
+		setCurrentAddresses((current) =>
+			reduceHomeAddresses(current, {
+				source: "loader",
+				addresses: loaderData.addresses,
+			}),
+		);
+	}, [loaderData.addresses]);
+
+	useEffect(() => {
 		return () => {
 			clearManualInboxRefreshTimers();
 		};
@@ -567,12 +572,20 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 	}, [fetcher.data, fetcher.state]);
 
 	useEffect(() => {
-		if (fetcher.state !== "idle" || !fetcher.data?.didUpdateAddress) {
+		const actionData = fetcher.data;
+		if (fetcher.state !== "idle" || !actionData?.didUpdateAddress) {
 			return;
 		}
 
+		setCurrentAddresses((current) =>
+			reduceHomeAddresses(current, {
+				source: "action",
+				addresses: actionData.addresses,
+				didUpdateAddress: actionData.didUpdateAddress,
+			}),
+		);
 		setExpandedEmailId(null);
-		if (shouldRefreshInboxAfterAddressUpdate(fetcher.data)) {
+		if (shouldRefreshInboxAfterAddressUpdate(actionData)) {
 			revalidator.revalidate();
 		}
 	}, [fetcher.data, fetcher.state, revalidator]);
@@ -994,10 +1007,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 									{emails.length === 0 ? (
 										<div className="tool-empty-state flex-1">
 											<p className="tool-empty-title">
-												{copy.emptyInboxTitle}
+												{isInboxUnavailable
+													? copy.inboxUnavailableTitle
+													: copy.emptyInboxTitle}
 											</p>
 											<p className="tool-empty-copy">
-												{copy.emptyInboxDescription}
+												{isInboxUnavailable
+													? copy.inboxUnavailableDescription
+													: copy.emptyInboxDescription}
 											</p>
 										</div>
 									) : (
