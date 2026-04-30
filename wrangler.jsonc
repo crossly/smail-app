@@ -10,15 +10,15 @@
 	},
 	"routes": [
 		{
-			"pattern": "mail.056650.xyz",
+			"pattern": "mail.example.com",
 			"custom_domain": true
 		}
 	],
 	"vars": {
-		"SITE_DOMAIN": "mail.056650.xyz",
-		"SITE_URL": "https://mail.056650.xyz",
-		"MAIL_DOMAIN": "mail.056650.xyz",
-		"SUPPORT_EMAIL": "support@mail.056650.xyz",
+		"SITE_DOMAIN": "mail.example.com",
+		"SITE_URL": "https://mail.example.com",
+		"MAIL_DOMAIN": "mail.example.com",
+		"SUPPORT_EMAIL": "support@mail.example.com",
 		"INBOX_AUTO_REFRESH_INTERVAL_MS": "10000"
 	},
 	"secrets": {
@@ -33,17 +33,17 @@
 	"d1_databases": [
 		{
 			"binding": "D1",
-			"database_name": "smail-v3",
-			"database_id": "3020ce5d-7714-4a0a-ac03-280abf9a81c1",
-			"preview_database_id": "8a38551f-5eab-4095-b69b-2f4a87e9d8d1",
+			"database_name": "smail",
+			"database_id": "replace-with-d1-database-id",
+			"preview_database_id": "replace-with-preview-d1-database-id",
 			"migrations_dir": "migrations"
 		}
 	],
 	"r2_buckets": [
 		{
 			"binding": "R2",
-			"bucket_name": "smailv3",
-			"preview_bucket_name": "smailv3-preview"
+			"bucket_name": "smail",
+			"preview_bucket_name": "smail-preview"
 		}
 	]
 }

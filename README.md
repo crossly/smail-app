@@ -1,6 +1,12 @@
-# mail.056650.xyz
+# Smail App
 
 简洁的临时邮箱工具，部署在 Cloudflare Workers 上。当前版本已经瘦身为 Vite React SPA + Hono API，只保留临时邮箱创建、收件箱读取、邮件详情渲染和自动化 API。
+
+当前公开实例：
+
+```text
+https://mail.056650.xyz
+```
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/crossly/smail-app)
 
@@ -45,15 +51,23 @@ workers/
   app.ts                         # Worker fetch/email/scheduled 入口
 migrations/
   *.sql                          # D1 迁移
-wrangler.jsonc                   # Cloudflare 绑定、域名、Assets 和 cron 配置
+wrangler.jsonc                   # self-host Cloudflare 配置模板
+scripts/generate-wrangler-config.mjs
+                                # 从 .env / 环境变量生成本地 Wrangler 配置
 ```
 
 ## API 调用指南
 
-生产环境 Base URL：
+公开实例 Base URL：
 
 ```text
 https://mail.056650.xyz
+```
+
+self-host 时请替换为你的域名：
+
+```text
+https://mail.example.com
 ```
 
 本地预览 Base URL 以 Wrangler 输出为准，通常是：
@@ -78,7 +92,7 @@ http://localhost:8787
 
 ```json
 {
-  "address": "agent-demo@mail.056650.xyz",
+  "address": "agent-demo@mail.example.com",
   "expiresAt": 1777619894982,
   "refreshIntervalMs": 10000
 }
@@ -89,7 +103,7 @@ http://localhost:8787
 ```json
 {
   "id": "msg-1",
-  "to_address": "agent-demo@mail.056650.xyz",
+  "to_address": "agent-demo@mail.example.com",
   "from_name": "Sender",
   "from_address": "sender@example.test",
   "subject": "Verification",
@@ -102,7 +116,7 @@ http://localhost:8787
 ```json
 {
   "id": "msg-1",
-  "to_address": "agent-demo@mail.056650.xyz",
+  "to_address": "agent-demo@mail.example.com",
   "from_name": "Sender",
   "from_address": "sender@example.test",
   "subject": "Verification",
@@ -138,7 +152,7 @@ GET /api/session/mailbox
 
 ```json
 {
-  "address": "reuse-this-box@mail.056650.xyz",
+  "address": "reuse-this-box@mail.example.com",
   "expiresAt": 1777619894982,
   "refreshIntervalMs": 10000
 }
@@ -169,7 +183,7 @@ Content-Type: application/json
 
 ```json
 {
-  "address": "reuse-this-box@mail.056650.xyz",
+  "address": "reuse-this-box@mail.example.com",
   "expiresAt": 1777619894982,
   "refreshIntervalMs": 10000
 }
@@ -203,11 +217,11 @@ GET /api/session/inbox
 
 ```json
 {
-  "address": "reuse-this-box@mail.056650.xyz",
+  "address": "reuse-this-box@mail.example.com",
   "emails": [
     {
       "id": "msg-1",
-      "to_address": "reuse-this-box@mail.056650.xyz",
+      "to_address": "reuse-this-box@mail.example.com",
       "from_name": "Sender",
       "from_address": "sender@example.test",
       "subject": "Verification",
@@ -257,6 +271,12 @@ Authorization: Bearer <mailboxToken>
 
 ### 创建邮箱
 
+以下示例默认已设置：
+
+```bash
+BASE_URL='https://mail.example.com'
+```
+
 ```http
 POST /api/mailboxes
 Content-Type: application/json
@@ -268,7 +288,7 @@ Authorization: Bearer <oldMailboxToken>
 随机邮箱：
 
 ```bash
-curl -sS -X POST 'https://mail.056650.xyz/api/mailboxes' \
+curl -sS -X POST "$BASE_URL/api/mailboxes" \
   -H 'content-type: application/json' \
   -d '{}'
 ```
@@ -276,7 +296,7 @@ curl -sS -X POST 'https://mail.056650.xyz/api/mailboxes' \
 自定义前缀：
 
 ```bash
-curl -sS -X POST 'https://mail.056650.xyz/api/mailboxes' \
+curl -sS -X POST "$BASE_URL/api/mailboxes" \
   -H 'content-type: application/json' \
   -d '{"prefix":"agent-demo"}'
 ```
@@ -285,7 +305,7 @@ curl -sS -X POST 'https://mail.056650.xyz/api/mailboxes' \
 
 ```json
 {
-  "address": "agent-demo@mail.056650.xyz",
+  "address": "agent-demo@mail.example.com",
   "mailboxToken": "<jwt>",
   "expiresAt": 1777619894982
 }
@@ -294,7 +314,7 @@ curl -sS -X POST 'https://mail.056650.xyz/api/mailboxes' \
 ### 拉取邮件列表
 
 ```bash
-curl -sS 'https://mail.056650.xyz/api/mailboxes/agent-demo%40mail.056650.xyz/emails' \
+curl -sS "$BASE_URL/api/mailboxes/agent-demo%40mail.example.com/emails" \
   -H "authorization: Bearer $MAILBOX_TOKEN"
 ```
 
@@ -302,11 +322,11 @@ curl -sS 'https://mail.056650.xyz/api/mailboxes/agent-demo%40mail.056650.xyz/ema
 
 ```json
 {
-  "address": "agent-demo@mail.056650.xyz",
+  "address": "agent-demo@mail.example.com",
   "emails": [
     {
       "id": "msg-1",
-      "to_address": "agent-demo@mail.056650.xyz",
+      "to_address": "agent-demo@mail.example.com",
       "from_name": "Sender",
       "from_address": "sender@example.test",
       "subject": "Verification",
@@ -319,7 +339,7 @@ curl -sS 'https://mail.056650.xyz/api/mailboxes/agent-demo%40mail.056650.xyz/ema
 ### 拉取单封邮件
 
 ```bash
-curl -sS 'https://mail.056650.xyz/api/mailboxes/agent-demo%40mail.056650.xyz/emails/msg-1' \
+curl -sS "$BASE_URL/api/mailboxes/agent-demo%40mail.example.com/emails/msg-1" \
   -H "authorization: Bearer $MAILBOX_TOKEN"
 ```
 
@@ -330,7 +350,7 @@ curl -sS 'https://mail.056650.xyz/api/mailboxes/agent-demo%40mail.056650.xyz/ema
 下面示例会创建一个自定义邮箱，保存 `mailboxToken`，然后轮询收件箱。需要本机有 Node.js 用于解析 JSON 和 URL 编码。
 
 ```bash
-BASE_URL='https://mail.056650.xyz'
+BASE_URL='https://mail.example.com'
 PREFIX='agent-demo'
 
 CREATE_RESPONSE=$(
@@ -362,7 +382,7 @@ curl -sS "$BASE_URL/api/mailboxes/$ENCODED_ADDRESS/emails/$EMAIL_ID" \
 ### 完整 JavaScript 示例
 
 ```js
-const baseUrl = "https://mail.056650.xyz";
+const baseUrl = "https://mail.example.com";
 
 const created = await fetch(`${baseUrl}/api/mailboxes`, {
   method: "POST",
@@ -431,28 +451,48 @@ pnpm run dev:client
 - `pnpm run typecheck`：生成 Cloudflare 类型并执行 TypeScript 检查。
 - `pnpm run build`：构建 Vite SPA。
 - `pnpm run preview`：构建、执行本地 D1 迁移，并启动 Wrangler Worker 预览。
+- `pnpm run wrangler:config`：根据 `.env` / 环境变量生成本地 Wrangler 配置。
+- `pnpm run wrangler:config:check`：部署前检查必填 Cloudflare 资源配置。
 - `pnpm run migrate:local`：对本地 Miniflare D1 执行迁移。
 - `pnpm run migrate`：对远端 D1 执行迁移。
 - `pnpm run deploy`：构建、迁移并部署 Worker。
 
 ## Cloudflare 配置
 
-`wrangler.jsonc` 当前配置：
+仓库提交的 `wrangler.jsonc` 是 self-host 模板，使用 `mail.example.com` 和占位 D1/R2 ID，方便 fork 后先看到需要替换的字段。真实部署时脚本会读取 `.env`、`.env.local`、`.dev.vars` 和进程环境变量，生成本地文件：
 
-- Worker 名称：`smail-app`
-- 自定义域名：`mail.056650.xyz`
-- Assets binding：`ASSETS`，目录 `./dist`
-- D1 binding：`D1`
-- R2 binding：`R2`
-- Cron：`*/30 * * * *`
+```text
+.wrangler/generated-wrangler.jsonc
+```
 
-环境变量：
+所有 `pnpm run deploy`、`pnpm run preview`、`pnpm run typecheck` 相关脚本都会使用这个生成文件。
 
+### 配置文件
+
+复制示例配置：
+
+```bash
+cp .env.example .env
+```
+
+然后至少填写：
+
+- `WORKER_NAME`：Worker 名称。
+- `WORKER_ROUTE_PATTERN`：你的自定义域名，例如 `mail.example.com`。
 - `SITE_DOMAIN`：站点域名。
 - `SITE_URL`：站点 URL。
 - `MAIL_DOMAIN`：生成邮箱和接收邮件使用的域名。
 - `SUPPORT_EMAIL`：支持邮箱。
+- `D1_DATABASE_NAME`：D1 数据库名称。
+- `D1_DATABASE_ID`：远端 D1 database id。
+- `D1_PREVIEW_DATABASE_ID`：本地/preview D1 database id，可先与远端 ID 相同。
+- `R2_BUCKET_NAME`：远端 R2 bucket 名称。
+- `R2_PREVIEW_BUCKET_NAME`：preview R2 bucket 名称，可先与远端 bucket 不同。
+
+环境变量：
+
 - `INBOX_AUTO_REFRESH_INTERVAL_MS`：前端自动刷新间隔，低于 `1000` 会回退到默认 `10000`。
+- `CLEANUP_CRON`：过期邮件清理 cron，默认 `*/30 * * * *`。
 
 Worker Secret：
 
@@ -464,6 +504,43 @@ Worker Secret：
 ```bash
 pnpm wrangler secret put SESSION_SECRETS
 pnpm wrangler secret put TOKEN_SECRETS
+```
+
+生成 Wrangler 配置：
+
+```bash
+pnpm run wrangler:config
+```
+
+部署前严格检查配置：
+
+```bash
+pnpm run wrangler:config:check
+```
+
+### 从零创建 Cloudflare 资源
+
+创建 D1：
+
+```bash
+pnpm exec wrangler d1 create smail
+```
+
+把输出里的 `database_id` 填入 `.env` 的 `D1_DATABASE_ID` 和 `D1_PREVIEW_DATABASE_ID`。
+
+创建 R2：
+
+```bash
+pnpm exec wrangler r2 bucket create smail
+pnpm exec wrangler r2 bucket create smail-preview
+```
+
+把 bucket 名称填入 `.env` 的 `R2_BUCKET_NAME` 和 `R2_PREVIEW_BUCKET_NAME`。
+
+执行远端迁移：
+
+```bash
+pnpm run migrate
 ```
 
 部署前确认 Wrangler 已登录：
@@ -480,7 +557,7 @@ pnpm run deploy
 
 ## Cloudflare Email Routing
 
-生产环境需要在 Cloudflare Email Routing / Email Workers 中把 `mail.056650.xyz` 的收信路由指向该 Worker。当前 Worker 入口 `workers/app.ts` 同时提供：
+生产环境需要在 Cloudflare Email Routing / Email Workers 中把你的 `MAIL_DOMAIN` 收信路由指向该 Worker。当前 Worker 入口 `workers/app.ts` 同时提供：
 
 - `fetch`：网站和 HTTP API
 - `email`：接收 Email Routing 投递的邮件
@@ -507,3 +584,14 @@ pnpm run migrate
 - 不建议用于银行、工作、政务、法律、关键账号找回等高敏感场景。
 - API 目前只支持收信，不支持发信。
 - 旧自定义邮箱可以重新创建同名前缀，并读取最近 24 小时内仍存在的邮件。
+
+## License 状态
+
+本项目基于 `akazwz/smail` 重构，但截至 2026-04-30，我没有在上游仓库根目录发现 `LICENSE` 文件，也没有在上游 `package.json` 中发现 `license` 字段。因此当前仓库暂时标记为 `UNLICENSED`，不建议在未确认授权前公开作为可自由复用的开源项目发布。
+
+开源前请先完成其中一种方式：
+
+- 获得上游作者明确授权，并按授权要求添加对应 `LICENSE`。
+- 如果你拥有足够权利重新授权本仓库，选择一个许可证并提交 `LICENSE` 文件，例如 MIT、Apache-2.0 或 AGPL-3.0。
+
+在许可证明确前，仓库可以公开展示代码，但法律意义上不等于允许第三方复制、修改、分发或商用。

@@ -1,20 +1,35 @@
 {
 	"name": "smail-app",
 	"private": true,
+	"license": "UNLICENSED",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/crossly/smail-app.git"
+	},
+	"bugs": {
+		"url": "https://github.com/crossly/smail-app/issues"
+	},
+	"homepage": "https://github.com/crossly/smail-app#readme",
+	"packageManager": "pnpm@10.25.0",
+	"engines": {
+		"node": ">=22.0.0",
+		"pnpm": ">=10.0.0"
+	},
 	"type": "module",
 	"scripts": {
 		"build": "vite build",
-		"cf-typegen": "wrangler types --config wrangler.jsonc",
-		"deploy": "pnpm run build && pnpm run migrate && wrangler deploy --config wrangler.jsonc",
+		"cf-typegen": "pnpm run wrangler:config && wrangler types --config .wrangler/generated-wrangler.jsonc",
+		"deploy": "pnpm run wrangler:config:check && pnpm run build && pnpm run migrate && wrangler deploy --config .wrangler/generated-wrangler.jsonc",
 		"dev": "pnpm run preview",
 		"dev:client": "vite dev",
-		"postinstall": "pnpm run cf-typegen",
-		"preview": "pnpm run build && pnpm run migrate:local && pnpm run worker:dev",
+		"preview": "pnpm run wrangler:config && pnpm run build && pnpm run migrate:local && pnpm run worker:dev",
 		"test": "node --test \"app/utils/email-content.test.ts\" \"app/utils/email-ingest.test.ts\" \"app/utils/incoming-email.test.ts\" \"app/utils/mail-access.test.ts\" \"app/utils/mail-cleanup.test.ts\" \"app/utils/mail-reservations.test.ts\" \"app/utils/mail.test.ts\" \"app/utils/site-config.test.ts\" \"src/**/*.test.ts\"",
 		"typecheck": "pnpm run cf-typegen && tsc -b",
-		"migrate": "wrangler d1 migrations apply D1 --remote --config wrangler.jsonc",
-		"migrate:local": "CI=1 wrangler d1 migrations apply D1 --local --config wrangler.jsonc",
-		"worker:dev": "SESSION_SECRETS=${SESSION_SECRETS:-local-preview-session-secret-change-me} wrangler dev --config wrangler.jsonc"
+		"migrate": "wrangler d1 migrations apply D1 --remote --config .wrangler/generated-wrangler.jsonc",
+		"migrate:local": "CI=1 wrangler d1 migrations apply D1 --local --config .wrangler/generated-wrangler.jsonc",
+		"worker:dev": "SESSION_SECRETS=${SESSION_SECRETS:-local-preview-session-secret-change-me} wrangler dev --config .wrangler/generated-wrangler.jsonc",
+		"wrangler:config": "node scripts/generate-wrangler-config.mjs",
+		"wrangler:config:check": "node scripts/generate-wrangler-config.mjs --check"
 	},
 	"dependencies": {
 		"@tanstack/react-query": "^5.90.12",
