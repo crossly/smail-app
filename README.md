@@ -456,11 +456,11 @@ pnpm run dev:client
 - `pnpm run wrangler:config:check`：部署前检查必填 Cloudflare 资源配置。
 - `pnpm run migrate:local`：对本地 Miniflare D1 执行迁移。
 - `pnpm run migrate`：对远端 D1 执行迁移。
-- `pnpm run deploy`：构建、迁移并部署 Worker。
+- `pnpm run deploy`：根据本地 `.env` / 环境变量生成配置，构建、迁移并部署 Worker。
 
 ## Cloudflare 配置
 
-仓库根目录的 `wrangler.jsonc` 是当前公开实例 `mail.056650.xyz` 的 Cloudflare 配置，用于 Cloudflare Workers Builds 从 GitHub 自动构建。
+仓库不再跟踪生产 `wrangler.jsonc`，避免公开具体生产绑定。当前公开实例 `mail.056650.xyz` 通过本地 `.env` 生成 `.wrangler/generated-wrangler.jsonc` 后部署。
 
 self-host 用户可以参考 `wrangler.self-host.jsonc`，或通过脚本读取 `.env`、`.env.local`、`.dev.vars` 和进程环境变量，生成本地部署配置：
 
@@ -468,7 +468,7 @@ self-host 用户可以参考 `wrangler.self-host.jsonc`，或通过脚本读取 
 .wrangler/generated-wrangler.jsonc
 ```
 
-本地 `pnpm run deploy`、`pnpm run preview`、`pnpm run typecheck` 相关脚本都会使用这个生成文件。
+本地 `pnpm run deploy`、`pnpm run preview`、`pnpm run typecheck` 相关脚本都会使用这个生成文件。GitHub 上的 Cloudflare Workers Builds 检查如果仍启用，可能因为缺少生产配置而失败；当前项目以本地 Wrangler 部署为准。
 
 ### 配置文件
 
