@@ -51,7 +51,8 @@ workers/
   app.ts                         # Worker fetch/email/scheduled 入口
 migrations/
   *.sql                          # D1 迁移
-wrangler.jsonc                   # self-host Cloudflare 配置模板
+wrangler.jsonc                   # 当前公开实例的 Cloudflare 配置
+wrangler.self-host.jsonc         # self-host Cloudflare 配置模板
 scripts/generate-wrangler-config.mjs
                                 # 从 .env / 环境变量生成本地 Wrangler 配置
 ```
@@ -459,13 +460,15 @@ pnpm run dev:client
 
 ## Cloudflare 配置
 
-仓库提交的 `wrangler.jsonc` 是 self-host 模板，使用 `mail.example.com` 和占位 D1/R2 ID，方便 fork 后先看到需要替换的字段。真实部署时脚本会读取 `.env`、`.env.local`、`.dev.vars` 和进程环境变量，生成本地文件：
+仓库根目录的 `wrangler.jsonc` 是当前公开实例 `mail.056650.xyz` 的 Cloudflare 配置，用于 Cloudflare Workers Builds 从 GitHub 自动构建。
+
+self-host 用户可以参考 `wrangler.self-host.jsonc`，或通过脚本读取 `.env`、`.env.local`、`.dev.vars` 和进程环境变量，生成本地部署配置：
 
 ```text
 .wrangler/generated-wrangler.jsonc
 ```
 
-所有 `pnpm run deploy`、`pnpm run preview`、`pnpm run typecheck` 相关脚本都会使用这个生成文件。
+本地 `pnpm run deploy`、`pnpm run preview`、`pnpm run typecheck` 相关脚本都会使用这个生成文件。
 
 ### 配置文件
 
