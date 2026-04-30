@@ -1,126 +1,93 @@
-# mail.056650.xyz（smail-v3）
+# mail.056650.xyz
 
-基于 React Router Framework Mode + Cloudflare Workers 的临时邮箱服务。
+简洁的临时邮箱工具，部署在 Cloudflare Workers 上。当前版本已经瘦身为 Vite React SPA + Hono API，只保留临时邮箱创建、收件箱读取、邮件详情渲染和自动化 API。
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/akazwz/smail)
 
-- 当前站点域名：`https://mail.056650.xyz`
-- Worker 名称：`smail-app`
-- 默认语言：`en`（同时支持 10 种语言）
+## 核心能力
 
-## 一键部署（Deploy to Cloudflare）
-
-- 上方按钮可让其他开发者将本项目一键部署到他们自己的 Cloudflare 账号。
-- 部署流程会基于仓库中的 `wrangler.jsonc` 自动创建并绑定所需资源（D1 / R2）。
-- 当前仓库默认把自定义域名与收信域名配置为 `mail.056650.xyz`；如果你要部署到别的域名，请同步修改 `wrangler.jsonc` 和 `.env.example` 中的域名变量。
-- 项目仓库需要保持公开（public）才能让他人正常使用该按钮。
-
-## 项目简介
-
-这是一个面向低风险场景的临时邮箱网站，核心目标是：
-
-- 一键生成临时邮箱地址
-- 即时查看收件箱
-- 用于注册验证、OTP、一次性下载等短期流程
-- 避免暴露长期个人邮箱
-
-项目同时包含多语言 SEO 页面（Markdown）和多语言博客。
+- 生成随机临时邮箱。
+- 使用自定义前缀复用邮箱地址。
+- 在网页内查看收件箱和展开邮件内容。
+- 通过 API 创建邮箱、轮询列表、读取邮件详情，方便 agent、脚本和自动化流程使用。
+- 邮件按接收时间保留 24 小时，过期后由定时任务清理。
 
 ## 技术栈
 
-- React 19 + React Router 7（Framework Mode，SSR）
-- Cloudflare Workers（HTTP + Email Worker）
-- Cloudflare D1（存储邮件元数据）
-- Cloudflare R2（存储邮件原始内容）
-- Signed Cookie Session（React Router 内置 Session）
-- Tailwind CSS 4
-- Markdoc（渲染 Markdown 页面与博客）
+- Vite + React 19 + TanStack Query
+- Hono on Cloudflare Workers
+- Cloudflare Email Workers
+- Cloudflare D1：邮件元数据和自定义前缀 reservation
+- Cloudflare R2：邮件原始内容，对象 key 为邮件 `id`
+- JWT HttpOnly session cookie：浏览器访问
+- JWT Bearer mailbox token：自动化 API 访问
 
-## 核心功能
+## 数据流
 
-- 首页临时邮箱收件箱
-- 邮件预览弹窗（解析 HTML/Text）
-- 面向 agent / 自动化程序的 Mailbox API
-- 多语言路由（`/:lang?`）
-- SEO 路由：`/robots.txt`、`/sitemap.xml`、`/rss.xml`
-- 多语言 Markdown 页面（about/faq/privacy/terms + 长尾 SEO 落地页）
-- 多语言博客列表、分页、文章页
+1. Cloudflare Email Worker 收到邮件后进入 `workers/app.ts` 的 `email` handler。
+2. `app/utils/incoming-email.ts` 解析邮件并规范化收件人地址为小写。
+3. `app/utils/email-ingest.ts` 先把原始邮件写入 R2，再把邮件元数据写入 D1。
+4. 浏览器通过 `/api/session/*` 读取当前邮箱、收件箱和邮件详情。
+5. 自动化程序通过 `/api/mailboxes/*` 创建邮箱并使用 Bearer token 读取邮件。
+6. `scheduled` handler 每 30 分钟运行 `cleanupExpiredEmails()`，清理过期邮件和 reservation。
 
-## 数据流（真实实现）
-
-1. 邮件进入 Worker 的 `email` 事件（`workers/app.ts`）
-2. 解析原始邮件后：
-   - 元数据写入 D1 `emails` 表（`id/to_address/from/subject/time`）
-   - 原始邮件内容写入 R2（对象 key 为 `id`）
-3. 首页按当前会话中的地址读取 D1 列表
-4. 打开邮件详情时，通过 `/api/email/:id`：
-   - 校验该邮件地址属于当前会话
-   - 校验邮件仍在 24 小时保留窗口内
-   - 从 R2 读取原始邮件并解析后返回
-
-5. 自动化 API 通过 `/api/mailboxes` 创建邮箱并返回 `mailboxToken`
-6. 自动化 API 通过 `Authorization: Bearer <mailboxToken>` 拉取列表和邮件详情
-
-说明：当前“24 小时”同时体现在 Cookie Session 可访问窗口、收件箱查询窗口以及 `scheduled` 定时清理；Worker 每 30 分钟调用 `cleanupExpiredEmails`，清理过期 D1 元数据、R2 原始邮件内容和自定义地址占用记录。
-
-## Automation API
-
-这套 API 主要给 agent、脚本、CI、浏览器自动化流程和第三方程序集成临时邮箱使用。
-
-### 认证方式
-
-- 所有自动化接口都使用 `Authorization: Bearer <mailboxToken>`
-- `mailboxToken` 只能由服务端生成，客户端不能自行伪造
-- 自定义前缀邮箱如果占有权发生变化，旧 `mailboxToken` 会立即失效，即使 token 自身还没过期
-
-### mailboxToken 怎么生成
-
-`mailboxToken` 不是随机字符串拼出来的，而是服务端签发的带签名令牌，当前实现位于 `app/.server/api-mailboxes.ts`：
-
-1. 服务端先构造 payload：
-   - `v`：token 版本，当前固定为 `1`
-   - `address`：邮箱地址
-   - `expiresAt`：token 到期时间（当前为签发后 24 小时）
-   - `ownerToken`：只有自定义前缀邮箱才会带上，用于绑定当前 reservation 占有权
-2. payload 会先被 JSON 序列化，再做 `base64url` 编码
-3. 服务端使用 `SESSION_SECRETS` 的第一个 secret，对编码后的 payload 做 `HMAC-SHA256` 签名
-4. 最终 token 结构是：
+## 目录结构
 
 ```text
-<base64url-payload>.<base64url-signature>
+app/
+  types/email.ts                 # D1 邮件元数据类型
+  utils/                         # 邮件解析、入库、保留策略、地址生成、清理等核心工具
+src/
+  client/                        # Vite React SPA
+  server/                        # Hono API、JWT、邮箱 service
+workers/
+  app.ts                         # Worker fetch/email/scheduled 入口
+migrations/
+  *.sql                          # D1 迁移
+wrangler.jsonc                   # Cloudflare 绑定和域名配置
 ```
 
-5. 校验时会：
-   - 用 `SESSION_SECRETS` 中所有 secret 依次验签，支持 secret 轮换
-   - 检查 `expiresAt`
-   - 检查 token 中的 `address` 是否与 URL 中的地址一致
-   - 如果是自定义前缀邮箱，再回查 D1 `email_reservations`，确认 `ownerToken` 仍是当前占有者
+## 浏览器 API
 
-说明：
+浏览器 API 使用 `__session` HttpOnly Cookie 保存邮箱访问权。Cookie 内容是服务端签发的 JWT，前端无法读取或伪造。
 
-- 随机邮箱 token 只校验签名、地址和过期时间
-- 自定义前缀邮箱 token 额外校验 reservation 占有权
-- 因为签名依赖 `SESSION_SECRETS`，所以外部程序不能脱离服务端自己生成合法 token
-
-### 1. 创建邮箱
-
-`POST /api/mailboxes`
-
-请求头：
+### 读取当前邮箱
 
 ```http
-Content-Type: application/json
-Authorization: Bearer <oldMailboxToken>
+GET /api/session/mailbox
 ```
 
-说明：
+无邮箱时：
 
-- `Authorization` 是可选的
-- 如果你要从一个已有自定义前缀邮箱切换到另一个邮箱，带上旧 token，服务端会顺手释放旧 reservation
-- 不传 `prefix` 时会生成随机邮箱
-- 传 `prefix` 时会生成固定前缀邮箱，例如 `reuse-this-box@mail.056650.xyz`
+```json
+{
+  "address": null
+}
+```
 
-请求体：
+有邮箱时：
+
+```json
+{
+  "address": "reuse-this-box@mail.056650.xyz",
+  "expiresAt": 1700086400000
+}
+```
+
+### 创建或切换邮箱
+
+```http
+POST /api/session/mailbox
+Content-Type: application/json
+```
+
+随机邮箱：
+
+```json
+{}
+```
+
+自定义前缀：
 
 ```json
 {
@@ -128,11 +95,114 @@ Authorization: Bearer <oldMailboxToken>
 }
 ```
 
-随机邮箱也可以传空对象：
+成功响应：
 
 ```json
-{}
+{
+  "address": "reuse-this-box@mail.056650.xyz",
+  "expiresAt": 1700086400000
+}
 ```
+
+### 删除当前邮箱
+
+```http
+DELETE /api/session/mailbox
+```
+
+成功响应：
+
+```json
+{
+  "ok": true
+}
+```
+
+如果当前邮箱是自定义前缀，删除时会释放对应 reservation。
+
+### 读取收件箱
+
+```http
+GET /api/session/inbox
+```
+
+成功响应：
+
+```json
+{
+  "address": "reuse-this-box@mail.056650.xyz",
+  "emails": [
+    {
+      "id": "msg-1",
+      "to_address": "reuse-this-box@mail.056650.xyz",
+      "from_name": "Sender",
+      "from_address": "sender@example.test",
+      "subject": "Verification",
+      "time": 1700000000000
+    }
+  ]
+}
+```
+
+### 读取邮件详情
+
+```http
+GET /api/session/emails/:id
+```
+
+成功响应：
+
+```json
+{
+  "id": "msg-1",
+  "to_address": "reuse-this-box@mail.056650.xyz",
+  "from_name": "Sender",
+  "from_address": "sender@example.test",
+  "subject": "Verification",
+  "time": 1700000000000,
+  "body": "<!DOCTYPE html>...",
+  "text": "Verification code: 123456",
+  "html": "<!DOCTYPE html>..."
+}
+```
+
+`body/html` 会经过清洗并包裹 CSP，适合放入 sandbox iframe 渲染。
+
+## Automation API
+
+Automation API 面向 agent、脚本、CI、浏览器自动化和第三方程序集成。
+
+### mailboxToken 怎么生成
+
+`mailboxToken` 由服务端生成，不能由客户端自行拼接。实现位于 `src/server/jwt.ts` 和 `src/server/mailbox-service.ts`。
+
+当前 token 是 HS256 JWT：
+
+- `typ`：固定为 `mailbox`
+- `address`：邮箱地址，会规范化为小写
+- `ownerToken`：仅自定义前缀邮箱携带，用来绑定 D1 reservation
+- `iat`：签发时间，Unix 秒
+- `exp`：过期时间，Unix 秒，当前为签发后 24 小时
+
+签名密钥优先读取 `TOKEN_SECRETS`，没有配置时回退到 `SESSION_SECRETS`。多个 secret 可用逗号分隔，最左侧用于签发，所有值都可用于验签，便于轮换。
+
+校验时会检查：
+
+- JWT 签名合法。
+- `typ` 与接口场景匹配。
+- token 未过期。
+- token 中的 `address` 与 URL 参数一致。
+- 自定义前缀邮箱还会回查 D1，确认 reservation 的 `ownerToken` 没有变化。
+
+### 创建邮箱
+
+```http
+POST /api/mailboxes
+Content-Type: application/json
+Authorization: Bearer <oldMailboxToken>
+```
+
+`Authorization` 可选。如果切换邮箱时带上旧 token，服务端会释放旧自定义前缀 reservation。
 
 示例：
 
@@ -142,198 +212,124 @@ curl -X POST 'https://mail.056650.xyz/api/mailboxes' \
   -d '{"prefix":"reuse-this-box"}'
 ```
 
-成功响应：`201 Created`
+成功响应：
 
 ```json
 {
   "address": "reuse-this-box@mail.056650.xyz",
-  "mailboxToken": "eyJ2IjoxLCJhZGRyZXNzIjoicmV1c2UtdGhpcy1ib3hAbWFpbC4wNTY2NTAueHl6IiwiZXhwaXJlc0F0IjoxNzAwMDg2NDAwMDAwLCJvd25lclRva2VuIjoiZ1M2R2JjT3VfRjJqQ2J6In0.<signature>",
+  "mailboxToken": "<jwt>",
   "expiresAt": 1700086400000
 }
 ```
 
-常见错误：
-
-- `400`：prefix 非法，或 JSON 格式错误
-- `409`：自定义前缀当前已被别的会话占用
-- `415`：请求不是 `application/json`
-
-### 2. 拉取邮件列表
-
-`GET /api/mailboxes/:address/emails`
-
-示例：
+### 拉取邮件列表
 
 ```bash
 curl 'https://mail.056650.xyz/api/mailboxes/reuse-this-box@mail.056650.xyz/emails' \
   -H "Authorization: Bearer $MAILBOX_TOKEN"
 ```
 
-成功响应：`200 OK`
+成功响应：
 
 ```json
 {
   "address": "reuse-this-box@mail.056650.xyz",
   "emails": [
     {
-      "id": "msg-2",
-      "address": "reuse-this-box@mail.056650.xyz",
-      "fromName": "Sender Two",
-      "fromAddress": "two@example.test",
-      "subject": "Second",
+      "id": "msg-1",
+      "to_address": "reuse-this-box@mail.056650.xyz",
+      "from_name": "Sender",
+      "from_address": "sender@example.test",
+      "subject": "Verification",
       "time": 1700000000000
     }
   ]
 }
 ```
 
-说明：
-
-- 只返回当前 24 小时保留窗口内的邮件
-- 按时间倒序返回
-- 最多返回 100 封
-
-常见错误：
-
-- `401`：缺少 `Authorization: Bearer ...`
-- `403`：token 无效、已过期，或自定义前缀占有权已变化
-- `404`：地址参数缺失或路由不匹配
-
-### 3. 拉取单封邮件详情
-
-`GET /api/mailboxes/:address/emails/:id`
-
-示例：
+### 拉取单封邮件
 
 ```bash
 curl 'https://mail.056650.xyz/api/mailboxes/reuse-this-box@mail.056650.xyz/emails/msg-1' \
   -H "Authorization: Bearer $MAILBOX_TOKEN"
 ```
 
-成功响应：`200 OK`
-
-```json
-{
-  "id": "msg-1",
-  "address": "reuse-this-box@mail.056650.xyz",
-  "fromName": "Sender One",
-  "fromAddress": "one@example.test",
-  "subject": "Hello",
-  "time": 1700000000000,
-  "text": "Verification code: 123456",
-  "html": "<!DOCTYPE html>..."
-}
-```
-
-说明：
-
-- `text` 是解析出的纯文本正文
-- `html` 是经过清洗后的可渲染 HTML，适合直接嵌入预览 iframe 或 HTML viewer
+成功响应包含邮件元数据、`text` 和清洗后的 `html/body`。
 
 常见错误：
 
-- `401`：缺少 token
-- `403`：token 无效、过期，或占有权变化
-- `404`：邮件不存在、已过期，或原始内容已被清理
-
-### 推荐接入方式
-
-给 agent / 脚本接入时，推荐按下面流程：
-
-1. `POST /api/mailboxes` 创建邮箱并保存 `address` 与 `mailboxToken`
-2. 轮询 `GET /api/mailboxes/:address/emails`
-3. 收到目标邮件后，用 `GET /api/mailboxes/:address/emails/:id` 拉取正文
-4. 如果你需要稳定复用同一个地址，始终传 `prefix`
-5. 如果服务返回 `403` 且你用的是自定义前缀邮箱，优先认为该地址占有权已经变化，应该重新创建邮箱并拿新 token
-
-## 目录结构
-
-```text
-app/
-  routes/              # 路由模块（home、md、blog、api、sitemap、robots 等）
-  md/                  # 多语言 SEO Markdown 页面
-  blog/                # 多语言博客内容与元数据
-  i18n/                # 语言配置与文案
-  .server/session.ts   # Signed Cookie Session
-  utils/               # 公共工具（meta、theme、retention 等）
-workers/
-  app.ts               # Cloudflare Worker 入口（fetch + email）
-migrations/
-  *.sql                # D1 迁移
-wrangler.jsonc         # Cloudflare 绑定配置
-```
+- `400`：JSON 无效或前缀不合法。
+- `401`：缺少 Cookie 或 Bearer token。
+- `403`：token 无效、过期、地址不匹配，或自定义前缀占有权已变化。
+- `404`：邮件不存在、已过期，或 R2 原始内容已被清理。
+- `409`：自定义前缀当前被其他会话占用。
+- `415`：请求体不是 `application/json`。
 
 ## 本地开发
 
-### 1. 安装依赖
+安装依赖：
 
 ```bash
 pnpm install
 ```
 
-### 2. 启动开发
-
-先创建本地 secret：
+准备本地环境变量：
 
 ```bash
 cp .env.example .env
 ```
 
+启动完整本地预览：
+
 ```bash
 pnpm run dev
 ```
 
-默认访问：`http://localhost:5173`
-
-### 3. 类型检查
+`pnpm run dev` 会构建 SPA、执行本地 D1 迁移，并用 Wrangler 启动 Worker。只开发前端静态界面时可以使用：
 
 ```bash
-pnpm run typecheck
-```
-
-### 4. 生产构建与预览
-
-```bash
-pnpm run build
-pnpm run preview
+pnpm run dev:client
 ```
 
 ## 常用命令
 
-- `pnpm run dev`：本地开发
-- `pnpm run build`：生产构建
-- `pnpm run preview`：本地预览构建产物
-- `pnpm run typecheck`：Cloudflare 类型生成 + 路由类型生成 + TS 检查
-- `pnpm run deploy`：构建后部署到 Cloudflare Workers
-- `pnpm run migrate`：对远端 D1（`smail-v3`）执行迁移
+- `pnpm test`：运行核心单测。
+- `pnpm run typecheck`：生成 Cloudflare 类型并执行 TypeScript 检查。
+- `pnpm run build`：构建 Vite SPA。
+- `pnpm run preview`：构建、执行本地 D1 迁移，并启动 Wrangler Worker 预览。
+- `pnpm run migrate:local`：对本地 Miniflare D1 执行迁移。
+- `pnpm run migrate`：对远端 D1 执行迁移。
+- `pnpm run deploy`：构建、迁移并部署 Worker。
 
-## Cloudflare 资源绑定
+## Cloudflare 配置
 
-`wrangler.jsonc` 当前使用以下绑定：
+`wrangler.jsonc` 当前配置：
 
-- `D1`：邮件元数据（数据库名 `smail-v3`）
-- `R2`：邮件内容对象存储（桶名 `smailv3`）
-- `routes`：自定义域名路由（当前为 `mail.056650.xyz`）
-- `triggers.crons`：`*/30 * * * *`（30 分钟触发一次，用于清理过期邮件与自定义地址占用记录）
+- Worker 名称：`smail-app`
+- 自定义域名：`mail.056650.xyz`
+- Assets binding：`ASSETS`，目录 `./dist`
+- D1 binding：`D1`
+- R2 binding：`R2`
+- Cron：`*/30 * * * *`
 
-此外当前通过环境变量配置以下站点域名信息：
+环境变量：
 
-- `SITE_DOMAIN`：站点展示域名，用于品牌名、SEO 文案替换等
-- `SITE_URL`：站点基准 URL，用于 canonical / sitemap / RSS / 结构化数据
-- `MAIL_DOMAIN`：生成临时邮箱地址时使用的收件域名
-- `SUPPORT_EMAIL`：联系页与 Markdown 文案中的支持邮箱
-- `INBOX_AUTO_REFRESH_INTERVAL_MS`：前端收件箱自动刷新间隔，默认 `10000`（10 秒）
+- `SITE_DOMAIN`：站点域名。
+- `SITE_URL`：站点 URL。
+- `MAIL_DOMAIN`：生成邮箱和接收邮件使用的域名。
+- `SUPPORT_EMAIL`：支持邮箱。
+- `INBOX_AUTO_REFRESH_INTERVAL_MS`：前端自动刷新间隔。
 
-此外还需要配置一个 Worker Secret：
+Worker Secret：
 
-- `SESSION_SECRETS`：Cookie Session 的签名密钥。支持逗号分隔多个值用于轮换，最左侧为当前生效密钥。
+- `SESSION_SECRETS`：必填。浏览器 session JWT 签名密钥。
+- `TOKEN_SECRETS`：可选。Automation API mailbox token 签名密钥；未配置时回退到 `SESSION_SECRETS`。
 
-本地开发可使用 `.env`，生产环境使用：
-
-注意：`.env` 和 `.dev.vars` 二选一即可；如果存在 `.dev.vars`，Wrangler 本地开发时不会再加载 `.env`。
+设置生产 secret：
 
 ```bash
 pnpm wrangler secret put SESSION_SECRETS
+pnpm wrangler secret put TOKEN_SECRETS
 ```
 
 ## 数据库迁移
@@ -345,33 +341,12 @@ pnpm wrangler secret put SESSION_SECRETS
 - `migrations/20260213_create_email_reservations.sql`
 - `migrations/20260427_normalize_email_recipient_casing.sql`
 
-首次部署或表结构变更后，执行：
+首次部署或表结构变更后执行：
 
 ```bash
 pnpm run migrate
 ```
 
-## 多语言与 SEO
+## 边界说明
 
-- 支持语言：`en/zh/es/fr/de/ja/ko/ru/pt/ar`
-- 默认语言为 `en`，默认语言不带前缀
-- Markdown 页面与博客均支持多语言
-- 自动生成 sitemap（包含首页、Markdown 页、博客列表/分页/文章）
-
-## 部署说明
-
-```bash
-pnpm run deploy
-```
-
-发布前建议至少执行：
-
-```bash
-pnpm run typecheck
-pnpm run build
-```
-
-## 重要边界
-
-- 本项目面向临时收信与低风险验证场景。
-- 不建议用于银行、工作、政务、法律与关键账号找回等高敏感场景。
+本项目面向临时收信、注册验证、测试和低风险自动化流程。不建议用于银行、工作、政务、法律、关键账号找回等高敏感场景。

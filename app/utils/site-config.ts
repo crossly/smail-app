@@ -1,5 +1,3 @@
-import { useMatches } from "react-router";
-
 const LEGACY_SITE_DOMAIN = "smail.pw";
 const LEGACY_SITE_URL = `https://${LEGACY_SITE_DOMAIN}`;
 const LEGACY_SUPPORT_EMAIL = `support@${LEGACY_SITE_DOMAIN}`;
@@ -22,12 +20,6 @@ export type SiteConfig = {
 	mailDomain: string;
 	supportEmail: string;
 };
-
-type MatchWithData =
-	| {
-			data?: unknown;
-	  }
-	| undefined;
 
 function normalizeDomain(value: string | undefined): string | null {
 	const trimmed = value?.trim();
@@ -82,25 +74,6 @@ function normalizeSupportEmail(
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function hasSiteConfig(value: unknown): value is { siteConfig: SiteConfig } {
-	if (!isPlainObject(value)) {
-		return false;
-	}
-
-	const siteConfig = value.siteConfig;
-	if (!isPlainObject(siteConfig)) {
-		return false;
-	}
-
-	return (
-		typeof siteConfig.siteDomain === "string" &&
-		typeof siteConfig.siteName === "string" &&
-		typeof siteConfig.siteUrl === "string" &&
-		typeof siteConfig.mailDomain === "string" &&
-		typeof siteConfig.supportEmail === "string"
-	);
 }
 
 export function createSiteConfig(options?: {
@@ -159,20 +132,4 @@ export function replaceSiteTextDeep<T>(
 	}
 
 	return value;
-}
-
-export function getSiteConfigFromMatches(
-	matches: MatchWithData[] | undefined,
-): SiteConfig {
-	for (const match of matches ?? []) {
-		if (hasSiteConfig(match?.data)) {
-			return match.data.siteConfig;
-		}
-	}
-
-	return DEFAULT_SITE_CONFIG;
-}
-
-export function useSiteConfig(): SiteConfig {
-	return getSiteConfigFromMatches(useMatches());
 }

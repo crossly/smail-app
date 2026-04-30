@@ -3,6 +3,11 @@
 	"name": "smail-app",
 	"compatibility_date": "2025-11-26",
 	"main": "./workers/app.ts",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application"
+	},
 	"routes": [
 		{
 			"pattern": "mail.056650.xyz",
