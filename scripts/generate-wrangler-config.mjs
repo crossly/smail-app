@@ -90,9 +90,9 @@ function createConfig(env) {
 		$schema: "node_modules/wrangler/config-schema.json",
 		name: env.WORKER_NAME,
 		compatibility_date: env.WORKER_COMPATIBILITY_DATE,
-		main: env.WORKER_MAIN,
+		main: resolve(PROJECT_ROOT, env.WORKER_MAIN),
 		assets: {
-			directory: env.ASSETS_DIRECTORY,
+			directory: resolve(PROJECT_ROOT, env.ASSETS_DIRECTORY),
 			binding: "ASSETS",
 			not_found_handling: "single-page-application",
 		},
