@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+const PROJECT_ROOT = process.cwd();
 const OUTPUT_PATH = ".wrangler/generated-wrangler.jsonc";
 const ENV_FILES = [".env", ".env.local", ".dev.vars"];
 const PLACEHOLDER_PREFIX = "replace-with-";
@@ -117,7 +118,7 @@ function createConfig(env) {
 				database_name: env.D1_DATABASE_NAME,
 				database_id: env.D1_DATABASE_ID,
 				preview_database_id: env.D1_PREVIEW_DATABASE_ID,
-				migrations_dir: "migrations",
+				migrations_dir: resolve(PROJECT_ROOT, "migrations"),
 			},
 		],
 		r2_buckets: [
