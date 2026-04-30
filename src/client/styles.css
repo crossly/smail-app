@@ -19,8 +19,12 @@
 	--text-secondary: #475569;
 	--text-muted: #64748b;
 	--text-faint: #94a3b8;
+	--danger-text: #9f2d20;
+	--danger-bg: rgba(190, 58, 39, 0.1);
+	--danger-border: rgba(168, 48, 34, 0.32);
 	--btn-border: rgba(23, 32, 51, 0.92);
 	--btn-gradient: linear-gradient(135deg, #172033, #30415f);
+	--btn-gradient-hover: linear-gradient(135deg, #0f172a, #23324d);
 	--btn-text: #ffffff;
 	--btn-shadow: 0 14px 34px rgba(23, 32, 51, 0.22);
 }
@@ -133,9 +137,13 @@ input {
 
 .state-box-error,
 .email-detail-error {
-	border-color: rgba(232, 112, 112, 0.48);
-	color: #f1b0a7;
-	background: rgba(178, 56, 56, 0.12);
+	border-color: var(--danger-border);
+	color: var(--danger-text);
+	background: var(--danger-bg);
+}
+
+.action-error {
+	margin-top: -8px;
 }
 
 .button-row,
@@ -152,8 +160,8 @@ input {
 }
 
 .button {
-	min-height: 38px;
-	padding: 0 14px;
+	min-height: 44px;
+	padding: 0 16px;
 	border: 1px solid var(--line-soft);
 	border-radius: 10px;
 	background: var(--surface-soft);
@@ -162,12 +170,29 @@ input {
 	font-size: 0.9rem;
 	font-weight: 750;
 	cursor: pointer;
+	transition:
+		background 160ms ease,
+		border-color 160ms ease,
+		box-shadow 160ms ease,
+		color 160ms ease,
+		transform 160ms ease;
 }
 
 .button:hover:not(:disabled) {
 	transform: translateY(-1px);
 	border-color: var(--line-strong);
 	background: var(--surface-hover);
+}
+
+.button:focus-visible,
+.email-summary:focus-visible,
+.input-row input:focus-visible {
+	outline: 3px solid rgba(var(--accent-glow), 0.28);
+	outline-offset: 2px;
+}
+
+.button:active:not(:disabled) {
+	transform: translateY(0);
 }
 
 .button:disabled {
@@ -182,8 +207,22 @@ input {
 	box-shadow: var(--btn-shadow);
 }
 
+.button-primary:hover:not(:disabled) {
+	border-color: var(--btn-border);
+	background: var(--btn-gradient-hover);
+	color: var(--btn-text);
+	box-shadow: 0 18px 40px rgba(23, 32, 51, 0.26);
+}
+
 .button-danger {
-	color: #f2b3aa;
+	border-color: var(--danger-border);
+	color: var(--danger-text);
+}
+
+.button-danger:hover:not(:disabled) {
+	border-color: rgba(159, 45, 32, 0.42);
+	background: rgba(190, 58, 39, 0.08);
+	color: #7c1f16;
 }
 
 .custom-prefix-form {
@@ -200,7 +239,7 @@ input {
 .input-row input {
 	width: 100%;
 	min-width: 0;
-	min-height: 40px;
+	min-height: 44px;
 	padding: 0 12px;
 	border: 1px solid var(--line-soft);
 	border-radius: 10px;

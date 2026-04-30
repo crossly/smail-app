@@ -59,6 +59,7 @@ function MailboxPanel({
 	address,
 	isLoading,
 	error,
+	actionError,
 	onCreate,
 	onDelete,
 	isCreating,
@@ -67,6 +68,7 @@ function MailboxPanel({
 	address: string | null;
 	isLoading: boolean;
 	error: unknown;
+	actionError: unknown;
 	onCreate: (prefix?: string) => void;
 	onDelete: () => void;
 	isCreating: boolean;
@@ -78,6 +80,19 @@ function MailboxPanel({
 	);
 	const isBusy = isCreating || isDeleting;
 
+	useEffect(() => {
+		if (copyState === "idle") {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => setCopyState("idle"), 1_600);
+		return () => window.clearTimeout(timeout);
+	}, [copyState]);
+
+	useEffect(() => {
+		setCopyState("idle");
+	}, [address]);
+
 	async function copyAddress() {
 		if (!address) {
 			return;
@@ -86,7 +101,6 @@ function MailboxPanel({
 		try {
 			await navigator.clipboard.writeText(address);
 			setCopyState("copied");
-			window.setTimeout(() => setCopyState("idle"), 1_600);
 		} catch {
 			setCopyState("failed");
 		}
@@ -107,7 +121,9 @@ function MailboxPanel({
 			{isLoading ? (
 				<div className="state-box">正在读取当前邮箱...</div>
 			) : error ? (
-				<div className="state-box state-box-error">{getErrorMessage(error)}</div>
+				<div className="state-box state-box-error" role="alert">
+					{getErrorMessage(error)}
+				</div>
 			) : address ? (
 				<div className="address-block">
 					<span className="address-label">Address</span>
@@ -149,6 +165,12 @@ function MailboxPanel({
 					{isDeleting ? "删除中..." : "删除"}
 				</button>
 			</div>
+
+			{actionError ? (
+				<div className="state-box state-box-error action-error" role="alert">
+					{getErrorMessage(actionError)}
+				</div>
+			) : null}
 
 			<form className="custom-prefix-form" onSubmit={submitCustomPrefix}>
 				<label htmlFor="mailbox-prefix">自定义前缀</label>
@@ -373,7 +395,8 @@ export function App() {
 				<MailboxPanel
 					address={address}
 					isLoading={mailboxQuery.isLoading}
-					error={mailboxQuery.error ?? actionError}
+					error={mailboxQuery.error}
+					actionError={actionError}
 					onCreate={(prefix) => createMailboxMutation.mutate(prefix)}
 					onDelete={() => deleteMailboxMutation.mutate()}
 					isCreating={createMailboxMutation.isPending}
